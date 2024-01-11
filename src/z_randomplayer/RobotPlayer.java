@@ -102,8 +102,8 @@ public strictfp class RobotPlayer {
         final RobotInfo[] nearbyAllies = rc.senseNearbyRobots(GameConstants.HEAL_RADIUS_SQUARED, rc.getTeam());
         if (nearbyAllies.length > 0) {
             final MapLocation target = nearbyAllies[0].getLocation();
-            if (rc.canAttack(target)) {
-                rc.attack(target);
+            if (rc.canHeal(target)) {
+                rc.heal(target);
                 return true;
             }
         }
