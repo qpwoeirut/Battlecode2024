@@ -11,10 +11,19 @@ public strictfp class RobotPlayer {
     public static void run(RobotController rc) {
         rng.setSeed(rc.getID());
 
+        final MapLocation[] spawnLocs = rc.getAllySpawnLocations();
+        // funny shuffle thing
+        for (int i = spawnLocs.length; i --> 0;) {
+            final int j = rng.nextInt(i + 1);
+            MapLocation tmp = spawnLocs[i];
+            spawnLocs[i] = spawnLocs[j];
+            spawnLocs[j] = tmp;
+        }
+
         while (true) {
             try {
                 if (!rc.isSpawned()) {
-                    spawn(rc);
+                    spawn(rc, spawnLocs);
                 }
                 if (rc.isSpawned()) {
                     if (rc.getRoundNum() <= 10) {
@@ -37,11 +46,28 @@ public strictfp class RobotPlayer {
         }
     }
 
-    static void spawn(RobotController rc) throws GameActionException {
-        MapLocation[] spawnLocs = rc.getAllySpawnLocations();
-        // Pick a random spawn location to attempt spawning in.
-        MapLocation randomLoc = spawnLocs[rng.nextInt(spawnLocs.length)];
-        if (rc.canSpawn(randomLoc)) rc.spawn(randomLoc);
+    static void spawn(RobotController rc, MapLocation[] spawnLocs) throws GameActionException {
+        for (int i = spawnLocs.length; i --> 0;) {
+            if (rc.canSpawn(spawnLocs[i])) {
+                rc.spawn(spawnLocs[i]);
+                for (int d = 8; d --> 0;) {
+                    if (!locationInArray(rc.getLocation().add(Direction.values()[d]), spawnLocs)) {
+                        if (rc.canMove(Direction.values()[d])) {
+                            rc.move(Direction.values()[d]);
+                            return;
+                        }
+                    }
+                }
+                return;
+            }
+        }
+    }
+
+    static boolean locationInArray(MapLocation needle, MapLocation[] haystack) {
+        for (int i = haystack.length; i --> 0;) {
+            if (needle.equals(haystack[i])) return true;
+        }
+        return false;
     }
 
     static void setup(RobotController rc) throws GameActionException {
@@ -94,7 +120,7 @@ public strictfp class RobotPlayer {
 
     static boolean fill(RobotController rc) throws GameActionException {
         MapInfo[] nearbyMapInfos = rc.senseNearbyMapInfos(GameConstants.INTERACT_RADIUS_SQUARED);
-        for (int i = nearbyMapInfos.length - 1; i --> 0;) {
+        for (int i = nearbyMapInfos.length; i --> 0;) {
             if (nearbyMapInfos[i].isWater() && rc.canFill(nearbyMapInfos[i].getMapLocation())) {
                 rc.fill(nearbyMapInfos[i].getMapLocation());
                 return true;
@@ -105,7 +131,7 @@ public strictfp class RobotPlayer {
 
     static boolean dig(RobotController rc) throws GameActionException {
         MapInfo[] nearbyMapInfos = rc.senseNearbyMapInfos(GameConstants.INTERACT_RADIUS_SQUARED);
-        for (int i = nearbyMapInfos.length - 1; i --> 0;) {
+        for (int i = nearbyMapInfos.length; i --> 0;) {
             if (nearbyMapInfos[i].isPassable() && rc.canDig(nearbyMapInfos[i].getMapLocation())) {
                 rc.dig(nearbyMapInfos[i].getMapLocation());
                 return true;
