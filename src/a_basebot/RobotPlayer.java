@@ -99,9 +99,9 @@ public strictfp class RobotPlayer {
 
     static boolean runAway(RobotController rc, RobotInfo[] enemies, RobotInfo nearestEnemy, RobotInfo[] allies) throws GameActionException {
         if (rc.getHealth() <= 450 || enemies.length > allies.length) {
-            if (rc.canBuild(TrapType.STUN, rc.getLocation())) {
-                // TODO: track where stun traps are, and assume they go off when they disappear
-                rc.build(TrapType.STUN, rc.getLocation());
+            if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation()) && enemies.length >= 4) {
+                // TODO: track where traps are, and assume they go off when they disappear, then switch to stun
+                rc.build(TrapType.EXPLOSIVE, rc.getLocation());
             }
             tryMove(rc, nearestEnemy.location.directionTo(rc.getLocation()));
             return true;
@@ -136,8 +136,8 @@ public strictfp class RobotPlayer {
         int bestIndex = -1;
         for (int i = allies.length; i --> 0;) {
             final int score = 1000 - allies[i].health + allies[i].healLevel + allies[i].attackLevel + allies[i].buildLevel;
-            final int distPenalty = rc.getLocation().isWithinDistanceSquared(allies[i].location, GameConstants.HEAL_RADIUS_SQUARED) ? 1 : chebyshevDistance(rc.getLocation(), allies[i].location) + 1;
-            if (healScore < score / distPenalty) {
+            final int distPenalty = rc.getLocation().isWithinDistanceSquared(allies[i].location, GameConstants.HEAL_RADIUS_SQUARED) ? 1 : chebyshevDistance(rc.getLocation(), allies[i].location);
+            if (allies[i].health < GameConstants.DEFAULT_HEALTH && healScore < score / distPenalty) {
                 healScore = score / distPenalty;
                 bestIndex = i;
             }
