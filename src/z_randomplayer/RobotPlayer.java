@@ -26,10 +26,8 @@ public strictfp class RobotPlayer {
                     spawn(rc, spawnLocs);
                 }
                 if (rc.isSpawned()) {
-                    if (rc.getRoundNum() <= 10) {
+                    if (rc.getRoundNum() <= GameConstants.SETUP_ROUNDS){
                         setup(rc);
-                    } else if (rc.getRoundNum() <= GameConstants.SETUP_ROUNDS){
-                        optimalGetCrumbs(rc);
                     } else{
                         play(rc);
                     }
@@ -71,8 +69,10 @@ public strictfp class RobotPlayer {
     }
 
     static void setup(RobotController rc) throws GameActionException {
-        fill(rc);
-        moveRandom(rc);
+        if (!getCrumbs(rc)) {
+            fill(rc);
+            moveRandom(rc);
+        }
     }
 
     static void play(RobotController rc) throws GameActionException {
@@ -140,25 +140,19 @@ public strictfp class RobotPlayer {
         return false;
     }
 
-    public static void optimalGetCrumbs(RobotController rc) throws GameActionException {
-        System.out.println("I'm getting crumbs");
-        MapLocation[] crumbs = rc.senseNearbyCrumbs(25);
-        //find nearby crumbs
+    public static boolean getCrumbs(RobotController rc) throws GameActionException {
+        MapLocation[] crumbs = rc.senseNearbyCrumbs(GameConstants.VISION_RADIUS_SQUARED);
         if (crumbs.length > 0) {
-            //if there are crumbs, find the closest one
+            System.out.println("I'm getting crumbs");
             MapLocation closestCrumb = crumbs[0];
             for (MapLocation crumb : crumbs) {
                 if (rc.getLocation().distanceSquaredTo(crumb) < rc.getLocation().distanceSquaredTo(closestCrumb)) {
                     closestCrumb = crumb;
                 }
             }
-            //move towards the closest crumb
-            Direction dir = rc.getLocation().directionTo(closestCrumb);
-            if (rc.canMove(dir)) {
-                rc.move(dir);
-            }
+            tryMove(rc, rc.getLocation().directionTo(closestCrumb));
         }
-
+        return false;
     }
 
     static void moveRandom(RobotController rc) throws GameActionException {
@@ -171,5 +165,13 @@ public strictfp class RobotPlayer {
         else if (rc.canMove(dir.opposite().rotateLeft())) rc.move(dir.opposite().rotateLeft());
         else if (rc.canMove(dir.opposite().rotateRight())) rc.move(dir.opposite().rotateRight());
         else if (rc.canMove(dir.opposite())) rc.move(dir.opposite());
+    }
+
+    static void tryMove(RobotController rc, Direction dir) throws GameActionException {
+        if (rc.canMove(dir)) rc.move(dir);
+        else if (rc.canMove(dir.rotateLeft())) rc.move(dir.rotateLeft());
+        else if (rc.canMove(dir.rotateRight())) rc.move(dir.rotateRight());
+        else if (rc.canMove(dir.rotateLeft().rotateLeft())) rc.move(dir.rotateLeft().rotateLeft());
+        else if (rc.canMove(dir.rotateRight().rotateRight())) rc.move(dir.rotateRight().rotateRight());
     }
 }
