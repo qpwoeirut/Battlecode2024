@@ -17,9 +17,11 @@ public strictfp class RobotPlayer {
                     spawn(rc);
                 }
                 if (rc.isSpawned()) {
-                    if (rc.getRoundNum() <= GameConstants.SETUP_ROUNDS) {
+                    if (rc.getRoundNum() <= 10) {
                         setup(rc);
-                    } else {
+                    } else if (rc.getRoundNum() <= GameConstants.SETUP_ROUNDS){
+                        optimalGetCrumbs(rc);
+                    } else{
                         play(rc);
                     }
                 }
@@ -110,6 +112,27 @@ public strictfp class RobotPlayer {
             }
         }
         return false;
+    }
+
+    public static void optimalGetCrumbs(RobotController rc) throws GameActionException {
+        System.out.println("I'm getting crumbs");
+        MapLocation[] crumbs = rc.senseNearbyCrumbs(25);
+        //find nearby crumbs
+        if (crumbs.length > 0) {
+            //if there are crumbs, find the closest one
+            MapLocation closestCrumb = crumbs[0];
+            for (MapLocation crumb : crumbs) {
+                if (rc.getLocation().distanceSquaredTo(crumb) < rc.getLocation().distanceSquaredTo(closestCrumb)) {
+                    closestCrumb = crumb;
+                }
+            }
+            //move towards the closest crumb
+            Direction dir = rc.getLocation().directionTo(closestCrumb);
+            if (rc.canMove(dir)) {
+                rc.move(dir);
+            }
+        }
+
     }
 
     static void moveRandom(RobotController rc) throws GameActionException {
