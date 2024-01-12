@@ -7,7 +7,7 @@ import java.util.Random;
 
 public strictfp class RobotPlayer {
     static final Random rng = new Random();
-    static final int MAX_RADIUS = 3;
+    static final int MAX_RADIUS = 6;
     static ArrayList<Direction> path = new ArrayList<Direction>();
     @SuppressWarnings("unused")
     public static void run(RobotController rc) {
@@ -57,8 +57,8 @@ public strictfp class RobotPlayer {
         } else if (interact(rc)) {
             System.out.println("interacted");
         }
-//        genBellmanFordPath(rc, rc.adjacentLocation(Direction.NORTH));
-        moveRandom(rc);
+        genBellmanFordPath(rc, rc.adjacentLocation(Direction.NORTH));
+//        moveRandom(rc);
     }
 
     static boolean attack(RobotController rc) throws GameActionException {
@@ -130,30 +130,29 @@ public strictfp class RobotPlayer {
     static void genBellmanFordPath(RobotController rc, MapLocation finLoc) throws GameActionException {
 
         if (path.size() == 0) {
-            int dist[][] = new int[MAX_RADIUS][MAX_RADIUS];
-            int px[][] = new int[MAX_RADIUS][MAX_RADIUS];
-            int py[][] = new int[MAX_RADIUS][MAX_RADIUS];
-            final int INF_VALUE = MAX_RADIUS + 1;
+            int dist[][] = new int[MAX_RADIUS * 2][MAX_RADIUS * 2];
+            int px[][] = new int[MAX_RADIUS * 2][MAX_RADIUS * 2];
+            int py[][] = new int[MAX_RADIUS * 2][MAX_RADIUS * 2];
+            final int INF_VALUE = 2 * MAX_RADIUS + 1;
             for (int i = 0; i < MAX_RADIUS; i++) {
                 for (int j = 0; j < MAX_RADIUS; j++) {
                     dist[i][j] = INF_VALUE;
                 }
             }
 
-            int ref_x = MAX_RADIUS / 2, ref_y = MAX_RADIUS / 2;
+            int ref_x = MAX_RADIUS, ref_y = MAX_RADIUS;
             dist[ref_x][ref_y] = 0;
 
             MapLocation currentLoc = rc.getLocation();
-
-            for (int x = 0; x < MAX_RADIUS; x++) {
-                for (int y = 0; y < MAX_RADIUS; y++) {
-                    MapLocation newLoc = new MapLocation(currentLoc.x + x, currentLoc.y + y);
+            for (MapLocation mp : rc.getAllLocationsWithinRadiusSquared(currentLoc,GameConstants.VISION_RADIUS_SQUARED)){
+                int x = mp.x-currentLoc.x + ref_x, y = mp.y - currentLoc.y + ref_x;
+                if ((x - ref_x) * (x - ref_x) + (y - ref_y) * (y - ref_y) <= GameConstants.VISION_RADIUS_SQUARED) {
+                    MapLocation newLoc = mp;
                     MapInfo newLocInfo = rc.senseMapInfo(newLoc);
                     if (newLocInfo.isPassable())
                         for (Direction d : Direction.values()) {
-                            if (x + d.dx >= 0 && y + d.dx < MAX_RADIUS
-                                && y + d.dy >= 0 && y + d.dy < MAX_RADIUS)
-                            {
+                            if (x + d.dx >= 0 && y + d.dx < 2 * MAX_RADIUS
+                                    && y + d.dy >= 0 && y + d.dy < 2 * MAX_RADIUS) {
                                 if (dist[x][y] + 1 < dist[x + d.dx][y + d.dy]) {
                                     dist[x + d.dx][y + d.dy] = dist[x][y] + 1;
                                     px[x + d.dx][y + d.dy] = x;
@@ -178,8 +177,10 @@ public strictfp class RobotPlayer {
 
 
 
-        final Direction dir = path.get(0);
-        path.remove(path.get(0));
+        final Direction dir = (path.isEmpty()? Direction.NORTH : path.get(0));
+        if (!path.isEmpty()) {
+            path.remove(path.get(0));
+        }
         if (rc.canMove(dir)) rc.move(dir);
         else if (rc.canMove(dir.rotateLeft())) rc.move(dir.rotateLeft());
         else if (rc.canMove(dir.rotateRight())) rc.move(dir.rotateRight());
