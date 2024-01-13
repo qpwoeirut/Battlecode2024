@@ -37,6 +37,18 @@ public class Util {
         return nearest;
     }
 
+    static EnemySighting nearestSighting(MapLocation loc, EnemySighting[] sightings) {
+        int dist = 1_000_000;
+        EnemySighting nearest = null;
+        for (int i = sightings.length;  i --> 0;) {
+            if (dist > loc.distanceSquaredTo(sightings[i].location)) {
+                dist = loc.distanceSquaredTo(sightings[i].location);
+                nearest = sightings[i];
+            }
+        }
+        return nearest;
+    }
+
     static int chebyshevDistance(MapLocation loc1, MapLocation loc2) {
         return Math.max(Math.abs(loc1.x - loc2.x), Math.abs(loc1.y - loc2.y));
     }

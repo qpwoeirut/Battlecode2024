@@ -114,12 +114,12 @@ public strictfp class RobotPlayer {
             rc.setIndicatorString("healed");
         }
 
-//        if (enemies.length == 0) {
-//            final MapLocation nearestEnemySighting = comms.nearestSighting();
-//            if (nearestEnemySighting != null) {
-//                tryMove(rc, rc.getLocation().directionTo(nearestEnemySighting));
-//            }
-//        }
+        if (enemies.length == 0) {
+            final EnemySighting nearestEnemySighting = nearestSighting(rc.getLocation(), Communications.enemySightings);
+            if (nearestEnemySighting != null) {
+                tryMove(rc, rc.getLocation().directionTo(nearestEnemySighting.location));
+            }
+        }
         moveRandom(rc, rng);
     }
 
