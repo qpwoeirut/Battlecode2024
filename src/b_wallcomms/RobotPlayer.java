@@ -49,7 +49,7 @@ public strictfp class RobotPlayer {
 
                     comms.broadcast();
 
-                    if (rc.getRoundNum() <= GameConstants.SETUP_ROUNDS) {
+                    if (rc.getRoundNum() <= GameConstants.SETUP_ROUNDS - Math.max(rc.getMapWidth(), rc.getMapHeight())) {
                         setup(rc);
                     } else {
                         play(rc, enemies);
@@ -111,19 +111,21 @@ public strictfp class RobotPlayer {
         }
         if (heal(rc, allies)) {
             rc.setIndicatorString("healed");
-        }
-
-        if (enemies.length == 0) {
+        } else if (enemies.length == 0) {
             final EnemySighting nearestEnemySighting = nearestSighting(rc.getLocation(), Communications.enemySightings, Communications.nSightings, rc.getRoundNum());
             if (nearestEnemySighting != null) {
                 tryMove(rc, rc.getLocation().directionTo(nearestEnemySighting.location));
+                rc.setIndicatorString("moving to " + nearestEnemySighting.location);
             }
         }
         moveRandom(rc, rng);
     }
 
     static boolean runAway(RobotController rc, RobotInfo[] enemies, RobotInfo nearestEnemy, RobotInfo[] allies) throws GameActionException {
-        if (rc.getHealth() <= 450 || enemies.length > allies.length) {
+        int healthDiff = 0;
+        for (int i = allies.length; i --> 0;) healthDiff += allies[i].health;
+        for (int i = enemies.length; i --> 0;) healthDiff -= enemies[i].health;
+        if (rc.getHealth() <= 450 || healthDiff < 0) {
             if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation()) && enemies.length >= 4) {
                 // TODO: track where traps are, and assume they go off when they disappear, then switch to stun
                 rc.build(TrapType.EXPLOSIVE, rc.getLocation());
@@ -173,10 +175,10 @@ public strictfp class RobotPlayer {
         if (bestIndex != -1) {
             if (rc.canHeal(allies[bestIndex].location)) {
                 rc.heal(allies[bestIndex].location);
-                return true;
             } else {
                 tryMove(rc, rc.getLocation().directionTo(allies[bestIndex].location));
             }
+            return true;
         }
         return false;
     }
