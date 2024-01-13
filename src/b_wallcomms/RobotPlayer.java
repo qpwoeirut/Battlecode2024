@@ -5,11 +5,13 @@ import battlecode.common.*;
 import java.util.Random;
 
 public strictfp class RobotPlayer {
-    static final Random rng = new Random();
+    static Random rng;
+    static Communications comms;
 
     @SuppressWarnings("unused")
     public static void run(RobotController rc) {
-        rng.setSeed(rc.getID());
+        comms = new Communications(rc);
+        rng = new Random(rc.getID());
 
         final MapLocation[] spawnLocs = rc.getAllySpawnLocations();
         // funny shuffle thing
@@ -29,11 +31,27 @@ public strictfp class RobotPlayer {
                 if (!rc.isSpawned()) {
                     spawn(rc, spawnLocs);
                 }
+                comms.readBroadcasts();
+
                 if (rc.isSpawned()) {
+                    final MapInfo[] mapInfos = rc.senseNearbyMapInfos();
+                    comms.addMapInfo(mapInfos);
+
+                    final FlagInfo[] allyFlags = rc.senseNearbyFlags(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam());
+                    comms.addAllyFlags(allyFlags);
+
+                    final FlagInfo[] enemyFlags = rc.senseNearbyFlags(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam().opponent());
+                    comms.addEnemyFlags(enemyFlags);
+
+                    final RobotInfo[] enemies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam().opponent());
+                    comms.addEnemies(enemies);
+
+                    comms.broadcast();
+
                     if (rc.getRoundNum() <= GameConstants.SETUP_ROUNDS) {
                         setup(rc);
                     } else {
-                        play(rc);
+                        play(rc, enemies);
                     }
                 }
             } catch (GameActionException e) {
@@ -79,21 +97,27 @@ public strictfp class RobotPlayer {
         }
     }
 
-    static void play(RobotController rc) throws GameActionException {
-        final RobotInfo[] enemies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam().opponent());
+    static void play(RobotController rc, RobotInfo[] enemies) throws GameActionException {
         final RobotInfo[] allies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam());
         if (enemies.length > 0) {
             final RobotInfo nearestEnemy = nearestRobot(rc.getLocation(), enemies);
             if (runAway(rc, enemies, nearestEnemy, allies)) {
                 rc.setIndicatorString("running away");
             }
-            if (attack(rc, enemies)) {
+            if (attack(rc, enemies, enemies.length * 2 <= allies.length + 1)) {
                 rc.setIndicatorString("attacked");
             }
         }
         if (heal(rc, allies)) {
             rc.setIndicatorString("healed");
         }
+
+//        if (enemies.length == 0) {
+//            final MapLocation nearestEnemySighting = comms.nearestSighting();
+//            if (nearestEnemySighting != null) {
+//                tryMove(rc, rc.getLocation().directionTo(nearestEnemySighting));
+//            }
+//        }
         moveRandom(rc);
     }
 
@@ -109,7 +133,7 @@ public strictfp class RobotPlayer {
         return false;
     }
 
-    static boolean attack(RobotController rc, RobotInfo[] enemies) throws GameActionException {
+    static boolean attack(RobotController rc, RobotInfo[] enemies, boolean chase) throws GameActionException {
         int attackScore = -1;
         int bestIndex = -1;
         for (int i = enemies.length; i --> 0;) {
@@ -126,6 +150,8 @@ public strictfp class RobotPlayer {
             if (rc.canAttack(enemies[bestIndex].location)) {
                 rc.attack(enemies[bestIndex].location);
                 return true;
+            } else if (chase) {
+                tryMove(rc, rc.getLocation().directionTo(enemies[bestIndex].location));
             }
         }
         return false;
