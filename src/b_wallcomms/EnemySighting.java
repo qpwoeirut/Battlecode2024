@@ -3,8 +3,8 @@ package b_wallcomms;
 import battlecode.common.MapLocation;
 
 public class EnemySighting {
-    final static int STALE = 12;
-    final static int NEARBY_DIST = 20;
+    final static int STALE = 6;
+    final static int NEARBY_DIST = 10;
     MapLocation location;
     int lastUpdate;
 
