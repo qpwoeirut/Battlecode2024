@@ -37,11 +37,11 @@ public class Util {
         return nearest;
     }
 
-    static EnemySighting nearestSighting(MapLocation loc, EnemySighting[] sightings) {
+    static EnemySighting nearestSighting(MapLocation loc, EnemySighting[] sightings, int nSightings, int round) {
         int dist = 1_000_000;
         EnemySighting nearest = null;
-        for (int i = sightings.length;  i --> 0;) {
-            if (dist > loc.distanceSquaredTo(sightings[i].location)) {
+        for (int i = nSightings; i --> 0;) {
+            if (dist > loc.distanceSquaredTo(sightings[i].location) && !sightings[i].stale(round)) {
                 dist = loc.distanceSquaredTo(sightings[i].location);
                 nearest = sightings[i];
             }

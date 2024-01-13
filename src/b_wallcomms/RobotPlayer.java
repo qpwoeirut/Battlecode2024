@@ -28,6 +28,8 @@ public strictfp class RobotPlayer {
             try {
                 if (rc.canBuyGlobal(GlobalUpgrade.ACTION)) {
                     rc.buyGlobal(GlobalUpgrade.ACTION);
+                } else if (rc.canBuyGlobal(GlobalUpgrade.HEALING)) {
+                    rc.buyGlobal(GlobalUpgrade.HEALING);
                 }
 
                 if (!rc.isSpawned()) {
@@ -39,11 +41,8 @@ public strictfp class RobotPlayer {
                     final MapInfo[] mapInfos = rc.senseNearbyMapInfos();
                     comms.addMapInfo(mapInfos);
 
-                    final FlagInfo[] allyFlags = rc.senseNearbyFlags(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam());
-                    comms.addAllyFlags(allyFlags);
-
-                    final FlagInfo[] enemyFlags = rc.senseNearbyFlags(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam().opponent());
-                    comms.addEnemyFlags(enemyFlags);
+                    final FlagInfo[] flags = rc.senseNearbyFlags(GameConstants.VISION_RADIUS_SQUARED);
+                    comms.addFlags(flags);
 
                     final RobotInfo[] enemies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam().opponent());
                     comms.addEnemies(enemies);
@@ -115,7 +114,7 @@ public strictfp class RobotPlayer {
         }
 
         if (enemies.length == 0) {
-            final EnemySighting nearestEnemySighting = nearestSighting(rc.getLocation(), Communications.enemySightings);
+            final EnemySighting nearestEnemySighting = nearestSighting(rc.getLocation(), Communications.enemySightings, Communications.nSightings, rc.getRoundNum());
             if (nearestEnemySighting != null) {
                 tryMove(rc, rc.getLocation().directionTo(nearestEnemySighting.location));
             }
