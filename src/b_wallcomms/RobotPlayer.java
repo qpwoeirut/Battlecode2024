@@ -114,7 +114,11 @@ public strictfp class RobotPlayer {
         } else if (enemies.length == 0) {
             final EnemySighting nearestEnemySighting = nearestSighting(rc.getLocation(), Communications.enemySightings, Communications.nSightings, rc.getRoundNum());
             if (nearestEnemySighting != null) {
-                tryMove(rc, rc.getLocation().directionTo(nearestEnemySighting.location));
+                final Direction dir = rc.getLocation().directionTo(nearestEnemySighting.location);
+                tryMove(rc, dir);
+                if (rc.isMovementReady() && rc.canFill(rc.getLocation().add(dir))) {
+                    rc.fill(rc.getLocation().add(dir));
+                }
                 rc.setIndicatorString("moving to " + nearestEnemySighting.location);
             }
         }
