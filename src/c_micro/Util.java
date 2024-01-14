@@ -50,6 +50,26 @@ public class Util {
         return nearest;
     }
 
+    // returns highest index in case of tie, which is ideal for enemyReachCount since the highest index is CENTER
+    static int minIndex(int[] arr) {
+        int idx = -1;
+        int value = 1_000_000_000;
+        for (int i = arr.length; i --> 0;) {
+            if (value > arr[i]) {
+                value = arr[i];
+                idx = i;
+            }
+        }
+        return idx;
+    }
+
+    static boolean locationInArray(MapLocation needle, MapLocation[] haystack) {
+        for (int i = haystack.length; i --> 0; ) {
+            if (needle.equals(haystack[i])) return true;
+        }
+        return false;
+    }
+
     static int chebyshevDistance(MapLocation loc1, MapLocation loc2) {
         return Math.max(Math.abs(loc1.x - loc2.x), Math.abs(loc1.y - loc2.y));
     }
@@ -66,5 +86,23 @@ public class Util {
         if (rc.canMove(Direction.SOUTHEAST) && rc.getLocation().add(Direction.SOUTHEAST).isWithinDistanceSquared(location, radiusSquared)) return Direction.SOUTHEAST;
         if (rc.canMove(Direction.NORTHEAST) && rc.getLocation().add(Direction.NORTHEAST).isWithinDistanceSquared(location, radiusSquared)) return Direction.NORTHEAST;
         return null;
+    }
+
+    static boolean canMoveAndAct(RobotController rc, MapLocation toMove, MapLocation actTarget) throws GameActionException {
+        return rc.onTheMap(toMove) &&  // onTheMap isn't limited by vision
+                (!rc.canSenseLocation(toMove) || rc.sensePassability(toMove)) &&  // assume passable if unknown
+                toMove.isWithinDistanceSquared(actTarget, GameConstants.ATTACK_RADIUS_SQUARED);
+    }
+
+    static float attackDmg(int level) {
+        switch (level) {
+            case 1: return 150 * 1.05f;
+            case 2: return 150 * 1.10f;
+            case 3: return 150 * 1.15f;
+            case 4: return 150 * 1.20f;
+            case 5: return 150 * 1.30f;
+            case 6: return 150 * 1.50f;
+            default: return 150;
+        }
     }
 }

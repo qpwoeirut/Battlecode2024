@@ -17,7 +17,7 @@ public strictfp class RobotPlayer {
 
         final MapLocation[] spawnLocs = rc.getAllySpawnLocations();
         // funny shuffle thing
-        for (int i = spawnLocs.length; i-- > 0; ) {
+        for (int i = spawnLocs.length; i --> 0; ) {
             final int j = rng.nextInt(i + 1);
             MapLocation tmp = spawnLocs[i];
             spawnLocs[i] = spawnLocs[j];
@@ -68,10 +68,10 @@ public strictfp class RobotPlayer {
     }
 
     static void spawn(RobotController rc, MapLocation[] spawnLocs) throws GameActionException {
-        for (int i = spawnLocs.length; i-- > 0; ) {
+        for (int i = spawnLocs.length; i --> 0; ) {
             if (rc.canSpawn(spawnLocs[i])) {
                 rc.spawn(spawnLocs[i]);
-                for (int d = 8; d-- > 0; ) {
+                for (int d = 8; d --> 0; ) {
                     if (!locationInArray(rc.getLocation().add(Direction.values()[d]), spawnLocs)) {
                         if (rc.canMove(Direction.values()[d])) {
                             rc.move(Direction.values()[d]);
@@ -84,13 +84,6 @@ public strictfp class RobotPlayer {
         }
     }
 
-    static boolean locationInArray(MapLocation needle, MapLocation[] haystack) {
-        for (int i = haystack.length; i-- > 0; ) {
-            if (needle.equals(haystack[i])) return true;
-        }
-        return false;
-    }
-
     static void setup(RobotController rc) throws GameActionException {
         if (!getCrumbs(rc)) {
             fill(rc);
@@ -99,15 +92,21 @@ public strictfp class RobotPlayer {
     }
 
     static void play(RobotController rc, RobotInfo[] enemies) throws GameActionException {
+        final int[] enemyReachCount = {  // order matches Direction.values()
+                rc.canMove(Direction.NORTH) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.NORTH)) : 1_000_000,
+                rc.canMove(Direction.NORTHEAST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.NORTHEAST)) : 1_000_000,
+                rc.canMove(Direction.EAST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.EAST)) : 1_000_000,
+                rc.canMove(Direction.SOUTHEAST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.SOUTHEAST)) : 1_000_000,
+                rc.canMove(Direction.SOUTH) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.SOUTH)) : 1_000_000,
+                rc.canMove(Direction.SOUTHWEST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.SOUTHWEST)) : 1_000_000,
+                rc.canMove(Direction.WEST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.WEST)) : 1_000_000,
+                rc.canMove(Direction.NORTHWEST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.NORTHWEST)) : 1_000_000,
+                countEnemiesCanReach(rc, enemies, rc.getLocation()),
+        };
+
         final RobotInfo[] allies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam());
         if (enemies.length > 0) {
-            final RobotInfo nearestEnemy = nearestRobot(rc.getLocation(), enemies);
-            if (runAway(rc, enemies, nearestEnemy, allies)) {
-                rc.setIndicatorString("running away");
-            }
-            if (attack(rc, enemies, enemies.length * 2 <= allies.length + 1)) {
-                rc.setIndicatorString("attacked");
-            }
+            fight(rc, enemies, allies, enemyReachCount);
         }
         if (heal(rc, allies)) {
             rc.setIndicatorString("healed");
@@ -122,14 +121,95 @@ public strictfp class RobotPlayer {
                 rc.setIndicatorString("moving to " + nearestEnemySighting.location);
             }
         }
-        moveRandom(rc, rng);
+        moveSafe(rc, enemyReachCount);
     }
 
-    static boolean runAway(RobotController rc, RobotInfo[] enemies, RobotInfo nearestEnemy, RobotInfo[] allies) throws GameActionException {
-        int healthDiff = 0;
-        for (int i = allies.length; i --> 0;) healthDiff += allies[i].health;
-        for (int i = enemies.length; i --> 0;) healthDiff -= enemies[i].health;
-        if (rc.getHealth() < GameConstants.DEFAULT_HEALTH && (rc.getHealth() <= 450 || healthDiff < 0)) {
+    // ideally we'd know enemies' movement cooldowns by tracking their moves but that is hard and scary to implement
+    // so for now just assume they can always move
+    static int countEnemiesCanReach(RobotController rc, RobotInfo[] enemies, MapLocation location) throws GameActionException {
+        int count = 0;
+        for (int i = enemies.length; i --> 0; ) {
+            count += (canMoveAndAct(rc, enemies[i].location, location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(Direction.NORTH), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(Direction.NORTHEAST), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(Direction.EAST), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(Direction.SOUTHEAST), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(Direction.SOUTH), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(Direction.SOUTHWEST), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(Direction.WEST), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(Direction.NORTHWEST), location)
+            ) ? 1 : 0;
+        }
+        return count;
+    }
+
+    /**
+     * Handles situations where at least one enemy is visible.
+     * If our action is cooling down, move to whatever spot is in range of the least enemies or chase if we clearly outnumber the enemy.
+     * Otherwise:
+     * If we can kill an enemy, always do it.
+     * If we're outnumbered or at low health, move away and place a trap if there are enough enemies.
+     * If we clearly outnumber the enemy or are near the border of enemy territory, attack and move toward an enemy.
+     * Otherwise, attack and move to whatever spot is in range of the least enemies.
+     *
+     * @param rc              the RobotController
+     * @param enemies         list of enemies
+     * @param allies          list of allies
+     * @param enemyReachCount array describing how many enemies can attack our adjacent locations
+     */
+    static void fight(RobotController rc, RobotInfo[] enemies, RobotInfo[] allies, int[] enemyReachCount) throws GameActionException {
+        int allyHealth = 0; for (int i = allies.length; i --> 0; ) allyHealth += allies[i].health;
+        int enemyHealth = 0; for (int i = enemies.length; i --> 0; ) enemyHealth += enemies[i].health;
+        if (rc.isActionReady()) {
+            RobotInfo[] enemiesInRange = rc.senseNearbyRobots(10, rc.getTeam().opponent());
+            final RobotInfo nearestEnemy = nearestRobot(rc.getLocation(), enemiesInRange.length > 0 ? enemiesInRange : enemies);
+
+            if (killEnemy(rc, enemiesInRange, enemyReachCount));
+            else if (runAway(rc, enemies, nearestEnemy, enemyReachCount, allyHealth, enemyHealth));
+            else if (beAggressive(rc, enemies, allies, allyHealth, enemyHealth));
+            else attackAndMoveAway(rc, enemiesInRange, enemyReachCount);
+        } else if (beAggressive(rc, enemies, allies, allyHealth, enemyHealth));
+        else moveSafe(rc, enemyReachCount);
+    }
+
+    static boolean killEnemy(RobotController rc, RobotInfo[] enemiesInRange, int[] enemyReachCount) throws GameActionException {
+        int bestIndex = -1;
+        Direction bestDir = null;
+        int bestScore = -1;
+
+        final float damage = attackDmg(rc.getLevel(SkillType.ATTACK));
+        for (int i = enemiesInRange.length; i --> 0; ) {
+            if (enemiesInRange[i].health <= damage) {
+                for (int d = 9; d --> 0; ) {
+                    final Direction dir = Direction.values()[d];
+                    if (rc.canMove(dir) && rc.getLocation().add(dir).isWithinDistanceSquared(enemiesInRange[i].location, GameConstants.ATTACK_RADIUS_SQUARED)) {
+                        final int score = (dir == Direction.CENTER ? 100 : 10) +
+                                (rc.senseMapInfo(rc.getLocation().add(dir)).getTeamTerritory() == rc.getTeam().opponent() ? 1000 : 10) -
+                                enemyReachCount[d];
+                        if (bestScore < score) {
+                            bestScore = score;
+                            bestIndex = i;
+                            bestDir = dir;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestIndex != -1) {
+            if (bestDir != Direction.CENTER && rc.canMove(bestDir)) {
+                rc.move(bestDir);
+            }
+            if (rc.canAttack(enemiesInRange[bestIndex].location)) {
+                rc.attack(enemiesInRange[bestIndex].location);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean runAway(RobotController rc, RobotInfo[] enemies, RobotInfo nearestEnemy, int[] enemyReachCount, int allyHealth, int enemyHealth) throws GameActionException {
+        if (rc.getHealth() < GameConstants.DEFAULT_HEALTH && (rc.getHealth() <= 450 || allyHealth < enemyHealth)) {
             if (enemies.length * rc.getCrumbs() >= 4000) {
                 if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation().add(rc.getLocation().directionTo(nearestEnemy.location)))) {
                     // TODO: track where traps are, and assume they go off when they disappear, then switch to stun
@@ -138,7 +218,7 @@ public strictfp class RobotPlayer {
                     rc.build(TrapType.EXPLOSIVE, rc.getLocation());
                 }
             }
-            tryMove(rc, nearestEnemy.location.directionTo(rc.getLocation()));
+            tryMove(rc, Direction.values()[minIndex(enemyReachCount)]);
             if (enemies.length * rc.getCrumbs() >= 4000) {
                 if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation())) {
                     rc.build(TrapType.EXPLOSIVE, rc.getLocation());
@@ -149,44 +229,84 @@ public strictfp class RobotPlayer {
         return false;
     }
 
-    static boolean attack(RobotController rc, RobotInfo[] enemies, boolean chase) throws GameActionException {
-        int attackScore = -1;
-        int bestIndex = -1;
-        for (int i = enemies.length; i --> 0;) {
-            final Direction dir = directionToReach(rc, enemies[i].location, GameConstants.ATTACK_RADIUS_SQUARED);
-            final int score = 1000 - enemies[i].health +
-                    enemies[i].healLevel + enemies[i].attackLevel + enemies[i].buildLevel +
-                    (dir == Direction.CENTER ? 1000 : (dir != null ? 200 : 0)) +
-                    (enemies[i].health <= 150 ? 10000 : 0);
-            if (attackScore < score) {
-                attackScore = score;
-                bestIndex = i;
+    static boolean beAggressive(RobotController rc, RobotInfo[] enemies, RobotInfo[] allies, int allyHealth, int enemyHealth) throws GameActionException {
+        if (allyHealth >= enemyHealth * 2 && allyHealth >= enemyHealth + GameConstants.DEFAULT_HEALTH * 2 && allies.length * 2 >= enemies.length * 3) {
+            int attackScore = -1;
+            int bestIndex = -1;
+            Direction bestDir = Direction.CENTER;
+            for (int i = enemies.length; i --> 0;) {
+                final Direction dir = directionToReach(rc, enemies[i].location, GameConstants.ATTACK_RADIUS_SQUARED);
+                final int score = 1000 - enemies[i].health +
+                        enemies[i].healLevel + enemies[i].attackLevel + enemies[i].buildLevel +
+                        (dir != null ? 1000 : 0);
+                if (attackScore < score) {
+                    attackScore = score;
+                    bestIndex = i;
+                    bestDir = dir;
+                }
             }
-        }
 
-        if (bestIndex != -1) {
-            if (rc.canAttack(enemies[bestIndex].location)) {
-                rc.attack(enemies[bestIndex].location);
-                return true;
-            } else if (chase) {
-                tryMove(rc, rc.getLocation().directionTo(enemies[bestIndex].location));
+            if (bestIndex != -1) {
+                if (bestDir == null) {
+                    // TODO: do some sort of pathfinding
+                    bestDir = rc.getLocation().directionTo(enemies[bestIndex].location);
+                }
+                if (bestDir != Direction.CENTER && rc.canMove(bestDir)) {
+                    rc.move(bestDir);
+                }
                 if (rc.canAttack(enemies[bestIndex].location)) {
                     rc.attack(enemies[bestIndex].location);
-                    return true;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    static void attackAndMoveAway(RobotController rc, RobotInfo[] enemiesInRange, int[] enemyReachCount) throws GameActionException {
+        int bestScore = -1;
+        int bestIndex = -1;
+        Direction bestDir = Direction.values()[minIndex(enemyReachCount)];
+        for (int i = enemiesInRange.length; i --> 0;) {
+            for (int d = 9; d --> 0;) {
+                final Direction dir = Direction.values()[d];
+                if (rc.canMove(dir) && rc.getLocation().add(dir).isWithinDistanceSquared(enemiesInRange[i].location, GameConstants.ATTACK_RADIUS_SQUARED)) {
+                    final int score = 1000 - enemiesInRange[i].health + enemiesInRange[i].attackLevel + enemiesInRange[i].buildLevel + enemiesInRange[i].healLevel +
+                            100 - enemyReachCount[d];
+                    if (bestScore < score) {
+                        bestScore = score;
+                        bestIndex = i;
+                        bestDir = dir;
+                    }
                 }
             }
         }
-        return false;
+
+        if (bestDir != Direction.CENTER && rc.canMove(bestDir)) {
+            rc.move(bestDir);
+        }
+        if (bestIndex != -1) {
+            if (rc.canAttack(enemiesInRange[bestIndex].location)) {
+                rc.attack(enemiesInRange[bestIndex].location);
+            }
+        }
+    }
+
+    static void moveSafe(RobotController rc, int[] enemyReachCount) throws GameActionException {
+        Direction bestDir = Direction.values()[minIndex(enemyReachCount)];
+        if (bestDir != Direction.CENTER && rc.canMove(bestDir)) {
+            rc.move(bestDir);
+        }
     }
 
     static boolean heal(RobotController rc, RobotInfo[] allies) throws GameActionException {
         int healScore = 0;
         int bestIndex = -1;
-        for (int i = allies.length; i --> 0;) {
+        for (int i = allies.length; i --> 0; ) {
             final int score = 1000 - allies[i].health + allies[i].healLevel + allies[i].attackLevel + allies[i].buildLevel;
-            final int distPenalty = rc.getLocation().isWithinDistanceSquared(allies[i].location, GameConstants.HEAL_RADIUS_SQUARED) ? 1 : chebyshevDistance(rc.getLocation(), allies[i].location);
-            if (allies[i].health < GameConstants.DEFAULT_HEALTH && healScore < score / distPenalty) {
-                healScore = score / distPenalty;
+            final int distPenalty = rc.getLocation().isWithinDistanceSquared(allies[i].location, GameConstants.HEAL_RADIUS_SQUARED) ? 0 : 700;
+            if (allies[i].health < GameConstants.DEFAULT_HEALTH && healScore < score - distPenalty) {
+                healScore = score - distPenalty;
                 bestIndex = i;
             }
         }
@@ -212,7 +332,7 @@ public strictfp class RobotPlayer {
 
     static boolean fill(RobotController rc) throws GameActionException {
         MapInfo[] nearbyMapInfos = rc.senseNearbyMapInfos(GameConstants.INTERACT_RADIUS_SQUARED);
-        for (int i = nearbyMapInfos.length; i-- > 0; ) {
+        for (int i = nearbyMapInfos.length; i --> 0; ) {
             if (nearbyMapInfos[i].isWater() && rc.canFill(nearbyMapInfos[i].getMapLocation())) {
                 rc.fill(nearbyMapInfos[i].getMapLocation());
                 return true;
@@ -223,7 +343,7 @@ public strictfp class RobotPlayer {
 
     static boolean dig(RobotController rc) throws GameActionException {
         MapInfo[] nearbyMapInfos = rc.senseNearbyMapInfos(GameConstants.INTERACT_RADIUS_SQUARED);
-        for (int i = nearbyMapInfos.length; i-- > 0; ) {
+        for (int i = nearbyMapInfos.length; i --> 0; ) {
             if (nearbyMapInfos[i].isPassable() && rc.canDig(nearbyMapInfos[i].getMapLocation())) {
                 rc.dig(nearbyMapInfos[i].getMapLocation());
                 return true;
