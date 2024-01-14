@@ -62,7 +62,7 @@ public class Communications {
 
 
     // QUEUE OF VALUES TO BROADCAST
-    final static int PRIORITY_COUNT = 14;  // in case we get trolled by parity ordering
+    final static int PRIORITY_COUNT = 12;  // in case we get trolled by parity ordering
     static int[] toPriorityBroadcast = new int[PRIORITY_COUNT * 4];
     static int nPriority = 0;
     static int[] toBroadcast = new int[1000];  // TODO: find max # of broadcasts
@@ -210,7 +210,7 @@ public class Communications {
             for (int j = nSightings; j --> 0; ) {
                 if (enemySightings[j].near(info[i].location)) {
                     handled = true;
-                    if (enemySightings[j].stale(rc.getRoundNum() + 1)) {
+                    if (enemySightings[j].stale(rc.getRoundNum())) {
                         enemySightings[j].mergeIn(info[i].location, rc.getRoundNum());
                         toBroadcast[nBroadcast++] = pack(ENEMY, 0, info[i].location);
                     }
