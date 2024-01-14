@@ -93,15 +93,15 @@ public strictfp class RobotPlayer {
 
     static void play(RobotController rc, RobotInfo[] enemies) throws GameActionException {
         final int[] enemyReachCount = {  // order matches Direction.values()
-                rc.canMove(Direction.NORTH) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.NORTH)) : 1_000_000,
-                rc.canMove(Direction.NORTHEAST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.NORTHEAST)) : 1_000_000,
-                rc.canMove(Direction.EAST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.EAST)) : 1_000_000,
-                rc.canMove(Direction.SOUTHEAST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.SOUTHEAST)) : 1_000_000,
-                rc.canMove(Direction.SOUTH) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.SOUTH)) : 1_000_000,
-                rc.canMove(Direction.SOUTHWEST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.SOUTHWEST)) : 1_000_000,
-                rc.canMove(Direction.WEST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.WEST)) : 1_000_000,
-                rc.canMove(Direction.NORTHWEST) ? countEnemiesCanReach(rc, enemies, rc.getLocation().add(Direction.NORTHWEST)) : 1_000_000,
-                countEnemiesCanReach(rc, enemies, rc.getLocation()),
+                rc.canMove(Direction.NORTH) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.NORTH)) : 1_000_000,
+                rc.canMove(Direction.NORTHEAST) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.NORTHEAST)) : 1_000_000,
+                rc.canMove(Direction.EAST) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.EAST)) : 1_000_000,
+                rc.canMove(Direction.SOUTHEAST) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.SOUTHEAST)) : 1_000_000,
+                rc.canMove(Direction.SOUTH) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.SOUTH)) : 1_000_000,
+                rc.canMove(Direction.SOUTHWEST) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.SOUTHWEST)) : 1_000_000,
+                rc.canMove(Direction.WEST) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.WEST)) : 1_000_000,
+                rc.canMove(Direction.NORTHWEST) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.NORTHWEST)) : 1_000_000,
+                countEnemiesCanReach(rc, rc.getLocation()),
         };
 
         final RobotInfo[] allies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam());
@@ -126,7 +126,8 @@ public strictfp class RobotPlayer {
 
     // ideally we'd know enemies' movement cooldowns by tracking their moves but that is hard and scary to implement
     // so for now just assume they can always move
-    static int countEnemiesCanReach(RobotController rc, RobotInfo[] enemies, MapLocation location) throws GameActionException {
+    static int countEnemiesCanReach(RobotController rc, MapLocation location) throws GameActionException {
+        final RobotInfo[] enemies = rc.senseNearbyRobots(location, 10, rc.getTeam().opponent());
         int count = 0;
         for (int i = enemies.length; i --> 0; ) {
             count += (canMoveAndAct(rc, enemies[i].location, location) ||
