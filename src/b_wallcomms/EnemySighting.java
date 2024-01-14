@@ -19,6 +19,7 @@ public class EnemySighting {
             this.lastUpdate = round;
             return true;
         } else if (near(location)) {
+            this.location = new MapLocation((this.location.x * 2 + location.x) / 3,(this.location.y * 2 + location.y) / 3);
             this.lastUpdate = round;
             return true;
         }
