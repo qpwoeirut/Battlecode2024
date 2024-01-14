@@ -105,4 +105,8 @@ public class Util {
             default: return 150;
         }
     }
+
+    static void debugBytecode(RobotController rc, String s) {
+        if (rc.getID() == 11682) System.out.println(s + " " + Clock.getBytecodeNum());
+    }
 }
