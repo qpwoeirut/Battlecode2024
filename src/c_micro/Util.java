@@ -18,6 +18,7 @@ public class Util {
     }
 
     static void tryMove(RobotController rc, Direction dir) throws GameActionException {
+        if (dir == null || dir == Direction.CENTER) return;
         if (rc.canMove(dir)) rc.move(dir);
         else if (rc.canMove(dir.rotateLeft())) rc.move(dir.rotateLeft());
         else if (rc.canMove(dir.rotateRight())) rc.move(dir.rotateRight());
@@ -28,7 +29,7 @@ public class Util {
     static RobotInfo nearestRobot(MapLocation loc, RobotInfo[] robots) {
         int dist = 1_000_000;
         RobotInfo nearest = null;
-        for (int i = robots.length;  i --> 0;) {
+        for (int i = robots.length; i --> 0; ) {
             if (dist > loc.distanceSquaredTo(robots[i].location)) {
                 dist = loc.distanceSquaredTo(robots[i].location);
                 nearest = robots[i];
@@ -40,7 +41,7 @@ public class Util {
     static EnemySighting nearestSighting(MapLocation loc, EnemySighting[] sightings, int nSightings, int round) {
         int dist = 1_000_000;
         EnemySighting nearest = null;
-        for (int i = nSightings; i --> 0;) {
+        for (int i = nSightings; i --> 0; ) {
             if (dist > loc.distanceSquaredTo(sightings[i].location) && !sightings[i].stale(round)) {
                 dist = loc.distanceSquaredTo(sightings[i].location);
                 nearest = sightings[i];
