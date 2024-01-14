@@ -251,28 +251,23 @@ public class Communications {
     }
 
     private int pack(int type, int value, MapLocation loc) {
-//        System.out.println(type + " " + value + " " + loc);
         return (((value * GameConstants.MAP_MAX_HEIGHT + loc.x) * GameConstants.MAP_MAX_HEIGHT + loc.y) << TYPE_SHIFT) + type;
     }
 
     private int packAllyFlag(int idx, MapLocation loc) {
-//        System.out.println("ally flag " + idx + " " + loc);
         final int val = pack(FLAG, idx, loc);
         return -(val << 1);
     }
     private int packEnemyFlag(int idx, MapLocation loc) {
-        System.out.println("enemy flag " + idx + " " + loc);
         final int val = pack(FLAG, idx, loc);
         return -((val << 1) | 1);
     }
 
     private int packAllyFlagMapping(int id, int idx) {
-//        System.out.println("ally map " + id + " " + idx);
         final int val = (((id * GameConstants.NUMBER_FLAGS) + idx) << TYPE_SHIFT) + ID_MAPPING;
         return -(val << 1);
     }
     private int packEnemyFlagMapping(int id, int idx) {
-        System.out.println("enemy map " + id + " " + idx);
         final int val = (((id * GameConstants.NUMBER_FLAGS) + idx) << TYPE_SHIFT) + ID_MAPPING;
         return -((val << 1) | 1);
     }
