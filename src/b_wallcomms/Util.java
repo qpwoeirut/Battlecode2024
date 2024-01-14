@@ -52,4 +52,18 @@ public class Util {
     static int chebyshevDistance(MapLocation loc1, MapLocation loc2) {
         return Math.max(Math.abs(loc1.x - loc2.x), Math.abs(loc1.y - loc2.y));
     }
+
+    // CENTER if no movement required; null if impossible to reach after moving
+    static Direction directionToReach(RobotController rc, MapLocation location, int radiusSquared) {
+        if (rc.getLocation().isWithinDistanceSquared(location, radiusSquared)) return Direction.CENTER;
+        if (rc.canMove(Direction.NORTH) && rc.getLocation().add(Direction.NORTH).isWithinDistanceSquared(location, radiusSquared)) return Direction.NORTH;
+        if (rc.canMove(Direction.WEST) && rc.getLocation().add(Direction.WEST).isWithinDistanceSquared(location, radiusSquared)) return Direction.WEST;
+        if (rc.canMove(Direction.SOUTH) && rc.getLocation().add(Direction.SOUTH).isWithinDistanceSquared(location, radiusSquared)) return Direction.SOUTH;
+        if (rc.canMove(Direction.EAST) && rc.getLocation().add(Direction.EAST).isWithinDistanceSquared(location, radiusSquared)) return Direction.EAST;
+        if (rc.canMove(Direction.NORTHWEST) && rc.getLocation().add(Direction.NORTHWEST).isWithinDistanceSquared(location, radiusSquared)) return Direction.NORTHWEST;
+        if (rc.canMove(Direction.SOUTHWEST) && rc.getLocation().add(Direction.SOUTHWEST).isWithinDistanceSquared(location, radiusSquared)) return Direction.SOUTHWEST;
+        if (rc.canMove(Direction.SOUTHEAST) && rc.getLocation().add(Direction.SOUTHEAST).isWithinDistanceSquared(location, radiusSquared)) return Direction.SOUTHEAST;
+        if (rc.canMove(Direction.NORTHEAST) && rc.getLocation().add(Direction.NORTHEAST).isWithinDistanceSquared(location, radiusSquared)) return Direction.NORTHEAST;
+        return null;
+    }
 }

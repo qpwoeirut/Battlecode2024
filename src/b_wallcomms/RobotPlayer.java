@@ -129,12 +129,21 @@ public strictfp class RobotPlayer {
         int healthDiff = 0;
         for (int i = allies.length; i --> 0;) healthDiff += allies[i].health;
         for (int i = enemies.length; i --> 0;) healthDiff -= enemies[i].health;
-        if (rc.getHealth() <= 450 || healthDiff < 0) {
-            if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation()) && enemies.length >= 4) {
-                // TODO: track where traps are, and assume they go off when they disappear, then switch to stun
-                rc.build(TrapType.EXPLOSIVE, rc.getLocation());
+        if (rc.getHealth() < GameConstants.DEFAULT_HEALTH && (rc.getHealth() <= 450 || healthDiff < 0)) {
+            if (enemies.length * rc.getCrumbs() >= 4000) {
+                if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation().add(rc.getLocation().directionTo(nearestEnemy.location)))) {
+                    // TODO: track where traps are, and assume they go off when they disappear, then switch to stun
+                    rc.build(TrapType.EXPLOSIVE, rc.getLocation().add(rc.getLocation().directionTo(nearestEnemy.location)));
+                } else if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation())) {
+                    rc.build(TrapType.EXPLOSIVE, rc.getLocation());
+                }
             }
             tryMove(rc, nearestEnemy.location.directionTo(rc.getLocation()));
+            if (enemies.length * rc.getCrumbs() >= 4000) {
+                if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation())) {
+                    rc.build(TrapType.EXPLOSIVE, rc.getLocation());
+                }
+            }
             return true;
         }
         return false;
@@ -144,12 +153,14 @@ public strictfp class RobotPlayer {
         int attackScore = -1;
         int bestIndex = -1;
         for (int i = enemies.length; i --> 0;) {
-            if (rc.getLocation().distanceSquaredTo(enemies[i].location) <= GameConstants.ATTACK_RADIUS_SQUARED) {
-                final int score = 1000 - enemies[i].health + enemies[i].healLevel + enemies[i].attackLevel + enemies[i].buildLevel;
-                if (attackScore < score) {
-                    attackScore = score;
-                    bestIndex = i;
-                }
+            final Direction dir = directionToReach(rc, enemies[i].location, GameConstants.ATTACK_RADIUS_SQUARED);
+            final int score = 1000 - enemies[i].health +
+                    enemies[i].healLevel + enemies[i].attackLevel + enemies[i].buildLevel +
+                    (dir == Direction.CENTER ? 1000 : (dir != null ? 200 : 0)) +
+                    (enemies[i].health <= 150 ? 10000 : 0);
+            if (attackScore < score) {
+                attackScore = score;
+                bestIndex = i;
             }
         }
 
@@ -159,6 +170,10 @@ public strictfp class RobotPlayer {
                 return true;
             } else if (chase) {
                 tryMove(rc, rc.getLocation().directionTo(enemies[bestIndex].location));
+                if (rc.canAttack(enemies[bestIndex].location)) {
+                    rc.attack(enemies[bestIndex].location);
+                    return true;
+                }
             }
         }
         return false;
