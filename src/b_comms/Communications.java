@@ -1,4 +1,4 @@
-package b_wallcomms;
+package b_comms;
 
 import battlecode.common.*;
 

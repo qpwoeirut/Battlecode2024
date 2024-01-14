@@ -1,10 +1,10 @@
-package b_wallcomms;
+package b_comms;
 
 import battlecode.common.*;
 
 import java.util.Random;
 
-import static b_wallcomms.Util.*;
+import static b_comms.Util.*;
 
 public strictfp class RobotPlayer {
     static Random rng;
