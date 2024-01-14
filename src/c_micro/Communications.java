@@ -28,15 +28,12 @@ public class Communications {
     final static int TYPE_SHIFT = 2;
     final static int TYPE_MASK = (1 << TYPE_SHIFT) - 1;
 
-    // Highest flag ID is 60 * 60 - 1?
-    // 3600 * 6 * 4 = 86400, which is too big. Use index parity.
-    final static int MAX_FLAGS = 6;
-
     // MAP VALUES. (4 * 60 * 60) << 2 = 57600
     final static int UNKNOWN = 0;
     final static int WALL_TILE = 1;
     final static int DAM_TILE = 2;
     final static int OPEN_TILE = 3;
+    final static int TO_SEND = 4;  // Temporary value that marks that we are responsible for broadcasting this location.
 
 
     // SYMMETRY TYPES
@@ -62,11 +59,21 @@ public class Communications {
 
 
     // QUEUE OF VALUES TO BROADCAST
-    final static int PRIORITY_COUNT = 12;  // in case we get trolled by parity ordering
-    static int[] toPriorityBroadcast = new int[PRIORITY_COUNT * 4];
-    static int nPriority = 0;
-    static int[] toBroadcast = new int[1000];  // TODO: find max # of broadcasts
-    static int nBroadcast = 0;
+
+    // Highest flag ID is 60 * 60 - 1?
+    // 3600 * 6 * 4 = 86400, which is too big. Use index parity to indicate whether broadcast is about ally or enemy flag.
+    final static int PRIORITY_COUNT = 8;  // use 8 instead of 6 just in case
+    static int[] tbAllyFlag = new int[PRIORITY_COUNT / 2];
+    static int nAllyFlag = 0;
+    static int[] tbEnemyFlag = new int[PRIORITY_COUNT / 2];
+    static int nEnemyFlag = 0;
+
+    static MapLocation[] tbMapLocation = new MapLocation[1000];  // TODO: find max # of broadcasts
+    static int[] tbMapValue = new int[1000];
+    static int nMap = 0;
+
+    static MapLocation[] tbEnemyLocation = new MapLocation[100];
+    static int nEnemyLocation = 0;
 
     // QUEUE OF OLD BROADCASTS TO CLEAR OUT
     static int[] toClear = new int[64];
@@ -129,8 +136,9 @@ public class Communications {
     public void addMapInfo(MapInfo[] info) {
         for (int i = info.length; i --> 0; ) {
             if (map[info[i].getMapLocation().x][info[i].getMapLocation().y] == UNKNOWN) {
-                map[info[i].getMapLocation().x][info[i].getMapLocation().y] = info[i].isWall() ? WALL_TILE : (info[i].isDam() ? DAM_TILE : OPEN_TILE);
-                toBroadcast[nBroadcast++] = pack(MAP_INFO, map[info[i].getMapLocation().x][info[i].getMapLocation().y], info[i].getMapLocation());
+                map[info[i].getMapLocation().x][info[i].getMapLocation().y] = TO_SEND;
+                tbMapLocation[nMap] = info[i].getMapLocation();
+                tbMapValue[nMap++] = info[i].isWall() ? WALL_TILE : (info[i].isDam() ? DAM_TILE : OPEN_TILE);
             }
         }
     }
@@ -141,63 +149,63 @@ public class Communications {
                 if (info[i].getID() == allyFlagId[0]) {
                     if (!allyFlags[0].equals(info[i].getLocation())) {
                         allyFlags[0] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packAllyFlag(0, info[i].getLocation());
+                        tbAllyFlag[nAllyFlag++] = pack(FLAG, 0, info[i].getLocation());
                     }
                 } else if (info[i].getID() == allyFlagId[1]) {
                     if (!allyFlags[1].equals(info[i].getLocation())) {
                         allyFlags[1] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packAllyFlag(1, info[i].getLocation());
+                        tbAllyFlag[nAllyFlag++] = pack(FLAG, 1, info[i].getLocation());
                     }
                 } else if (info[i].getID() == allyFlagId[2]) {
                     if (!allyFlags[2].equals(info[i].getLocation())) {
                         allyFlags[2] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packAllyFlag(2, info[i].getLocation());
+                        tbAllyFlag[nAllyFlag++] = pack(FLAG, 2, info[i].getLocation());
                     }
                 } else {
-                    // Be safe and don't send flag location yet. Make sure the ID_MAPPING is processed first.
+                    // Don't send flag location yet. Make sure the ID_MAPPING is processed first.
                     if (allyFlagId[0] == -1) {
                         allyFlagId[0] = info[i].getID();
                         allyFlags[0] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packAllyFlagMapping(info[i].getID(), 0);
+                        tbAllyFlag[nAllyFlag++] = packFlagMapping(info[i].getID(), 0);
                     } else if (allyFlagId[1] == -1) {
                         allyFlagId[1] = info[i].getID();
                         allyFlags[1] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packAllyFlagMapping(info[i].getID(), 1);
+                        tbAllyFlag[nAllyFlag++] = packFlagMapping(info[i].getID(), 1);
                     } else if (allyFlagId[2] == -1) {
                         allyFlagId[2] = info[i].getID();
                         allyFlags[2] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packAllyFlagMapping(info[i].getID(), 2);
+                        tbAllyFlag[nAllyFlag++] = packFlagMapping(info[i].getID(), 2);
                     } else throw new IllegalStateException("ally flag id doesn't match");
                 }
             } else {
                 if (info[i].getID() == enemyFlagId[0]) {
                     if (!enemyFlags[0].equals(info[i].getLocation())) {
                         enemyFlags[0] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packEnemyFlag(0, info[i].getLocation());
+                        tbEnemyFlag[nEnemyFlag++] = pack(FLAG, 0, info[i].getLocation());
                     }
                 } else if (info[i].getID() == enemyFlagId[1]) {
                     if (!enemyFlags[1].equals(info[i].getLocation())) {
                         enemyFlags[1] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packEnemyFlag(1, info[i].getLocation());
+                        tbEnemyFlag[nEnemyFlag++] = pack(FLAG, 1, info[i].getLocation());
                     }
                 } else if (info[i].getID() == enemyFlagId[2]) {
                     if (!enemyFlags[2].equals(info[i].getLocation())) {
                         enemyFlags[2] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packEnemyFlag(2, info[i].getLocation());
+                        tbEnemyFlag[nEnemyFlag++] = pack(FLAG, 2, info[i].getLocation());
                     }
                 } else {
                     if (enemyFlagId[0] == -1) {
                         enemyFlagId[0] = info[i].getID();
                         enemyFlags[0] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packEnemyFlagMapping(info[i].getID(), 0);
+                        tbEnemyFlag[nEnemyFlag++] = packFlagMapping(info[i].getID(), 0);
                     } else if (enemyFlagId[1] == -1) {
                         enemyFlagId[1] = info[i].getID();
                         enemyFlags[1] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packEnemyFlagMapping(info[i].getID(), 1);
+                        tbEnemyFlag[nEnemyFlag++] = packFlagMapping(info[i].getID(), 1);
                     } else if (enemyFlagId[2] == -1) {
                         enemyFlagId[2] = info[i].getID();
                         enemyFlags[2] = info[i].getLocation();
-                        toPriorityBroadcast[nPriority++] = packEnemyFlagMapping(info[i].getID(), 2);
+                        tbEnemyFlag[nEnemyFlag++] = packFlagMapping(info[i].getID(), 2);
                     } else throw new IllegalStateException("enemy flag id doesn't match");
                 }
             }
@@ -212,14 +220,14 @@ public class Communications {
                     handled = true;
                     if (enemySightings[j].stale(rc.getRoundNum())) {
                         enemySightings[j].mergeIn(info[i].location, rc.getRoundNum());
-                        toBroadcast[nBroadcast++] = pack(ENEMY, 0, info[i].location);
+                        tbEnemyLocation[nEnemyLocation++] = info[i].location;
                     }
                     break;
                 }
             }
             if (!handled) {
                 enemySightings[nSightings++] = new EnemySighting(info[i].location, rc.getRoundNum());
-                toBroadcast[nBroadcast++] = pack(ENEMY, 0, info[i].location);
+                tbEnemyLocation[nEnemyLocation++] = info[i].location;
             }
         }
     }
@@ -229,23 +237,36 @@ public class Communications {
             rc.writeSharedArray(toClear[--nClear], UNKNOWN);
         }
 
-        for (int i = 64; i --> PRIORITY_COUNT && nBroadcast > 0;) {
+        int i = 64;
+        while (i --> PRIORITY_COUNT && nMap > 0) {
+            if (map[tbMapLocation[nMap - 1].x][tbMapLocation[nMap - 1].y] == TO_SEND) {
+                // This value was already sent by another bot. Don't send it again.
+                --nMap;
+                continue;
+            }
             if (rc.readSharedArray(i) == UNUSED) {
-                rc.writeSharedArray(i, toBroadcast[--nBroadcast]);
+                --nMap;
+                rc.writeSharedArray(i, pack(MAP_INFO, tbMapValue[nMap], tbMapLocation[nMap]));
                 toClear[nClear++] = i;
             }
         }
-        for (int i = PRIORITY_COUNT; i --> 0 && nPriority > 0;) {
+        while (i --> PRIORITY_COUNT && nEnemyLocation > 0) {
             if (rc.readSharedArray(i) == UNUSED) {
-                if (toPriorityBroadcast[nPriority - 1] < 0) {  // FLAG or ID_MAPPING broadcast
-                    final int requiredIndexParity = (-toPriorityBroadcast[nPriority - 1]) & 1;
-                    if (requiredIndexParity == (i & 1)) {
-                        rc.writeSharedArray(i, (-toPriorityBroadcast[--nPriority]) >> 1);
-                    }
-                } else {
-                    rc.writeSharedArray(i, toPriorityBroadcast[--nPriority]);
-                    toClear[nClear++] = i;
-                }
+                rc.writeSharedArray(i, pack(ENEMY, 0, tbEnemyLocation[--nEnemyLocation]));
+                toClear[nClear++] = i;
+            }
+        }
+
+        for (i = 0; i < PRIORITY_COUNT && nAllyFlag > 0; i += 2) {  // even indexes only
+            if (rc.readSharedArray(i) == UNUSED) {
+                rc.writeSharedArray(i, tbAllyFlag[--nAllyFlag]);
+                toClear[nClear++] = i;
+            }
+        }
+        for (i = 1; i < PRIORITY_COUNT && nEnemyFlag > 0; i += 2) {  // odd indexes only
+            if (rc.readSharedArray(i) == UNUSED) {
+                rc.writeSharedArray(i, tbEnemyFlag[--nEnemyFlag]);
+                toClear[nClear++] = i;
             }
         }
     }
@@ -253,22 +274,7 @@ public class Communications {
     private int pack(int type, int value, MapLocation loc) {
         return (((value * GameConstants.MAP_MAX_HEIGHT + loc.x) * GameConstants.MAP_MAX_HEIGHT + loc.y) << TYPE_SHIFT) + type;
     }
-
-    private int packAllyFlag(int idx, MapLocation loc) {
-        final int val = pack(FLAG, idx, loc);
-        return -(val << 1);
-    }
-    private int packEnemyFlag(int idx, MapLocation loc) {
-        final int val = pack(FLAG, idx, loc);
-        return -((val << 1) | 1);
-    }
-
-    private int packAllyFlagMapping(int id, int idx) {
-        final int val = (((id * GameConstants.NUMBER_FLAGS) + idx) << TYPE_SHIFT) + ID_MAPPING;
-        return -(val << 1);
-    }
-    private int packEnemyFlagMapping(int id, int idx) {
-        final int val = (((id * GameConstants.NUMBER_FLAGS) + idx) << TYPE_SHIFT) + ID_MAPPING;
-        return -((val << 1) | 1);
+    private int packFlagMapping(int id, int idx) {
+        return (((id * GameConstants.NUMBER_FLAGS) + idx) << TYPE_SHIFT) + ID_MAPPING;
     }
 }
