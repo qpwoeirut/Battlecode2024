@@ -2,10 +2,9 @@ package c_micro;
 
 import battlecode.common.MapLocation;
 
-// TODO: instead of a list of sightings, have a heatmap-style grid where each cell is a 2x2-5x5 grid
 public class EnemySighting {
-    final static int STALE = 8;
-    final static int NEARBY_DIST = 16;
+    final static int STALE = 5;
+    final static int NEARBY_DIST = 8;
     MapLocation location;
     int lastUpdate;
 
