@@ -299,6 +299,14 @@ public class Communications {
         return priority;
     }
 
+    public int nearestDam(MapLocation loc) {
+        int dist = ((loc.x - rc.getMapWidth()) * (loc.x - rc.getMapWidth()) + (loc.y - rc.getMapHeight()) * (loc.y - rc.getMapHeight())) * 10;  // tiebreak by dist to center
+        for (int i = nDams; i --> 0; ) {
+            dist = Math.min(dist, loc.distanceSquaredTo(dams[i]));
+        }
+        return dist;
+    }
+
     public int distanceSquaredToNearestAllyFlag(MapLocation loc) {
         final int dist0 = allyFlags[0] == null ? 1_000_000 : loc.distanceSquaredTo(allyFlags[0]);
         final int dist1 = allyFlags[1] == null ? 1_000_000 : loc.distanceSquaredTo(allyFlags[1]);

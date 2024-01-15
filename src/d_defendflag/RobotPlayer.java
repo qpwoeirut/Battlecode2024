@@ -10,6 +10,8 @@ public strictfp class RobotPlayer {
     static Random rng;
     static Communications comms;
 
+//    final static int MOVE_FLAGS = 10;
+
     @SuppressWarnings("unused")
     public static void run(RobotController rc) {
         comms = new Communications(rc);
@@ -25,6 +27,7 @@ public strictfp class RobotPlayer {
         }
 
         MapLocation[] allyFlagSpawns = new MapLocation[GameConstants.NUMBER_FLAGS];
+//        MapLocation[] spawnZoneCenters = new MapLocation[GameConstants.NUMBER_FLAGS];
 
         while (true) {
             try {
@@ -45,6 +48,9 @@ public strictfp class RobotPlayer {
                 if (rc.getRoundNum() <= 202) {  // save flag locations during setup
                     allyFlagSpawns = new MapLocation[]{Communications.allyFlags[0], Communications.allyFlags[1], Communications.allyFlags[2]};
                 }
+//                if (rc.getRoundNum() < MOVE_FLAGS) {
+//                    spawnZoneCenters = new MapLocation[]{Communications.allyFlags[0], Communications.allyFlags[1], Communications.allyFlags[2]};
+//                }
 
                 if (rc.isSpawned()) {
                     final MapInfo[] mapInfos = rc.senseNearbyMapInfos();
@@ -52,6 +58,20 @@ public strictfp class RobotPlayer {
 
                     final FlagInfo[] flags = rc.senseNearbyFlags(GameConstants.VISION_RADIUS_SQUARED);
                     comms.addFlags(flags);
+
+                    // recover in case moving the flags didn't work and the positions got reset
+                    // if a flag gets stolen and dropped in exactly the spawn zone we'll have issues but hopefully that doesn't happen
+//                    for (int i = flags.length; i --> 0;) {
+//                        if (flags[i].getID() == Communications.allyFlagId[0] && !flags[i].isPickedUp() && flags[i].getLocation().equals(spawnZoneCenters[0])) {
+//                            allyFlagSpawns[0] = spawnZoneCenters[0];
+//                        } else if (flags[i].getID() == Communications.allyFlagId[1] && !flags[i].isPickedUp() && flags[i].getLocation().equals(spawnZoneCenters[1])) {
+//                            allyFlagSpawns[1] = spawnZoneCenters[1];
+//                        } else if (flags[i].getID() == Communications.allyFlagId[2] && !flags[i].isPickedUp() && flags[i].getLocation().equals(spawnZoneCenters[2])) {
+//                            allyFlagSpawns[2] = spawnZoneCenters[2];
+//                        }
+//                    }
+//                    System.out.println(Arrays.toString(allyFlagSpawns));
+//                    System.out.println(Arrays.toString(spawnZoneCenters));
 
                     final RobotInfo[] enemies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam().opponent());
                     comms.addEnemies(enemies);
@@ -99,6 +119,23 @@ public strictfp class RobotPlayer {
     }
 
     static void setup(RobotController rc) throws GameActionException {
+//        for (int i = flags.length; i --> 0 && rc.getRoundNum() > MOVE_FLAGS;) {
+//            if (rc.canPickupFlag(flags[i].getLocation())) {
+//                rc.pickupFlag(flags[i].getLocation());
+//                break;
+//            }
+//        }
+//
+//        if (rc.hasFlag()) {
+//            if (rc.getRoundNum() >= 50) {
+//                final int nearestDam0 = comms.nearestDam(spawnZoneCenters[0]);
+//                final int nearestDam1 = comms.nearestDam(spawnZoneCenters[1]);
+//                final int nearestDam2 = comms.nearestDam(spawnZoneCenters[2]);
+//
+//                final int bestIndex = nearestDam0 >= nearestDam1 && nearestDam0 >= nearestDam2 ? 0 : (nearestDam1 >= nearestDam2 ? 1 : 2);
+//                tryMove(rc, rc.getLocation().directionTo(spawnZoneCenters[bestIndex]));
+//            }
+//        } else
         if (!getCrumbs(rc)) {
             fill(rc);
             moveRandom(rc, rng);
