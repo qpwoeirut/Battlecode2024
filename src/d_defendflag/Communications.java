@@ -62,7 +62,7 @@ public class Communications {
     // QUEUE OF VALUES TO BROADCAST
 
     // Highest flag ID is 60 * 60 - 1?
-    // 3600 * 6 * 4 = 86400, which is too big. Use index parity to indicate whether broadcast is about ally or enemy flag.
+    // 3600 * 6 * 4 = 86400, which is too big. Use index to indicate whether broadcast is about ally or enemy flag.
     final static int ALLY_FLAG_SPACES = 3;
     final static int ENEMY_FLAG_SPACES = 6;
     final static int FLAG_SPACES = ALLY_FLAG_SPACES + ENEMY_FLAG_SPACES;
