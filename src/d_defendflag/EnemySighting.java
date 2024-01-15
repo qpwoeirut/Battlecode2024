@@ -3,8 +3,8 @@ package d_defendflag;
 import battlecode.common.MapLocation;
 
 public class EnemySighting {
-    final static int STALE = 5;
-    final static int NEARBY_DIST = 8;
+    final static int STALE = 6;
+    final static int NEARBY_DIST = 12;
     MapLocation location;
     int lastUpdate;
 
