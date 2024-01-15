@@ -121,7 +121,11 @@ public strictfp class RobotPlayer {
                 rc.setIndicatorString("moving to " + nearestEnemySighting.location);
             }
         }
-        moveSafe(rc, enemyReachCount);
+
+        if (enemies.length > 0) {
+            moveSafe(rc, enemyReachCount);
+        } else if (getCrumbs(rc));
+        else spreadOut(rc, allies);
     }
 
     // ideally we'd know enemies' movement cooldowns by tracking their moves but that is hard and scary to implement
@@ -353,7 +357,7 @@ public strictfp class RobotPlayer {
         return false;
     }
 
-    public static boolean getCrumbs(RobotController rc) throws GameActionException {
+    static boolean getCrumbs(RobotController rc) throws GameActionException {
         MapLocation[] crumbs = rc.senseNearbyCrumbs(GameConstants.VISION_RADIUS_SQUARED);
         if (crumbs.length > 0) {
             rc.setIndicatorString("getting crumbs");
@@ -363,8 +367,27 @@ public strictfp class RobotPlayer {
                     closestCrumb = crumb;
                 }
             }
+
+            tryMove(rc, rc.getLocation().directionTo(closestCrumb));
+            tryFill(rc, rc.getLocation().directionTo(closestCrumb));
             tryMove(rc, rc.getLocation().directionTo(closestCrumb));
         }
         return false;
+    }
+
+    static void spreadOut(RobotController rc, RobotInfo[] allies) throws GameActionException {
+        int weightX = 0, weightY = 0;
+        for (int i = allies.length; i --> 0;) {
+            if (rc.getLocation().x != allies[i].location.x) {
+                weightX += 1000 / (rc.getLocation().x - allies[i].location.x);
+            }
+            if (rc.getLocation().y != allies[i].location.y) {
+                weightY += 1000 / (rc.getLocation().y - allies[i].location.y);
+            }
+        }
+        final int dx = rng.nextInt(101) - 50 + weightX;
+        final int dy = rng.nextInt(101) - 50 + weightY;
+        final Direction dir = new MapLocation(0, 0).directionTo(new MapLocation(dx, dy));
+        tryMove(rc, dir);
     }
 }
