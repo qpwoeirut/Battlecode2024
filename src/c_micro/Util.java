@@ -98,9 +98,9 @@ public class Util {
     }
 
     static boolean canMoveAndAct(RobotController rc, MapLocation toMove, MapLocation actTarget) throws GameActionException {
-        return rc.onTheMap(toMove) &&  // onTheMap isn't limited by vision
-                (!rc.canSenseLocation(toMove) || rc.sensePassability(toMove)) &&  // assume passable if unknown
-                toMove.isWithinDistanceSquared(actTarget, GameConstants.ATTACK_RADIUS_SQUARED);
+        return toMove.isWithinDistanceSquared(actTarget, GameConstants.ATTACK_RADIUS_SQUARED) &&
+                rc.onTheMap(toMove) &&  // onTheMap isn't limited by vision
+                (!rc.canSenseLocation(toMove) || rc.sensePassability(toMove));  // assume passable if unknown
     }
 
     static float attackDmg(int level) {

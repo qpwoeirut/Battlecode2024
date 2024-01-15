@@ -134,15 +134,10 @@ public strictfp class RobotPlayer {
         final RobotInfo[] enemies = rc.senseNearbyRobots(location, 10, rc.getTeam().opponent());
         int count = 0;
         for (int i = enemies.length; i --> 0; ) {
-            count += (canMoveAndAct(rc, enemies[i].location, location) ||
-                    canMoveAndAct(rc, enemies[i].location.add(Direction.NORTH), location) ||
-                    canMoveAndAct(rc, enemies[i].location.add(Direction.NORTHEAST), location) ||
-                    canMoveAndAct(rc, enemies[i].location.add(Direction.EAST), location) ||
-                    canMoveAndAct(rc, enemies[i].location.add(Direction.SOUTHEAST), location) ||
-                    canMoveAndAct(rc, enemies[i].location.add(Direction.SOUTH), location) ||
-                    canMoveAndAct(rc, enemies[i].location.add(Direction.SOUTHWEST), location) ||
-                    canMoveAndAct(rc, enemies[i].location.add(Direction.WEST), location) ||
-                    canMoveAndAct(rc, enemies[i].location.add(Direction.NORTHWEST), location)
+            count += (enemies[i].location.isWithinDistanceSquared(location, GameConstants.ATTACK_RADIUS_SQUARED) ||
+                    canMoveAndAct(rc, enemies[i].location.add(enemies[i].location.directionTo(location)), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(enemies[i].location.directionTo(location).rotateLeft()), location) ||
+                    canMoveAndAct(rc, enemies[i].location.add(enemies[i].location.directionTo(location).rotateRight()), location)
             ) ? 1 : 0;
         }
         return count;
