@@ -24,8 +24,11 @@ public strictfp class RobotPlayer {
             spawnLocs[j] = tmp;
         }
 
+        MapLocation[] allyFlagSpawns = new MapLocation[GameConstants.NUMBER_FLAGS];
+
         while (true) {
             try {
+//                int rnd = rc.getRoundNum();
                 if (rc.canBuyGlobal(GlobalUpgrade.ACTION)) {
                     rc.buyGlobal(GlobalUpgrade.ACTION);
                 } else if (rc.canBuyGlobal(GlobalUpgrade.HEALING)) {
@@ -36,6 +39,12 @@ public strictfp class RobotPlayer {
                     spawn(rc, spawnLocs);
                 }
                 comms.readBroadcasts();
+
+//                debugBytecode(rc, "after readBroadcasts");
+
+                if (rc.getRoundNum() <= 202) {  // save flag locations during setup
+                    allyFlagSpawns = new MapLocation[]{Communications.allyFlags[0], Communications.allyFlags[1], Communications.allyFlags[2]};
+                }
 
                 if (rc.isSpawned()) {
                     final MapInfo[] mapInfos = rc.senseNearbyMapInfos();
@@ -49,12 +58,17 @@ public strictfp class RobotPlayer {
 
                     comms.broadcast();
 
+//                    debugBytecode(rc, "after broadcast");
+
                     if (rc.getRoundNum() <= GameConstants.SETUP_ROUNDS - Math.max(rc.getMapWidth(), rc.getMapHeight())) {
                         setup(rc);
                     } else {
-                        play(rc, enemies);
+                        play(rc, enemies, allyFlagSpawns);
                     }
                 }
+//                if (rc.getRoundNum() != rnd) {
+//                    System.out.println("uh oh");
+//                }
             } catch (GameActionException e) {
                 System.out.println("GameActionException");
                 e.printStackTrace();
@@ -91,7 +105,7 @@ public strictfp class RobotPlayer {
         }
     }
 
-    static void play(RobotController rc, RobotInfo[] enemies) throws GameActionException {
+    static void play(RobotController rc, RobotInfo[] enemies, MapLocation[] allyFlagSpawns) throws GameActionException {
         final int[] enemyReachCount = {  // order matches Direction.values()
                 rc.canMove(Direction.NORTH) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.NORTH)) : 1_000_000,
                 rc.canMove(Direction.NORTHEAST) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.NORTHEAST)) : 1_000_000,
@@ -104,28 +118,42 @@ public strictfp class RobotPlayer {
                 countEnemiesCanReach(rc, rc.getLocation()),
         };
 
+//        debugBytecode(rc, "after enemyReachCount");
+
         final RobotInfo[] allies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam());
         if (enemies.length > 0) {
             fight(rc, enemies, allies, enemyReachCount);
+//            debugBytecode(rc, "after fight");
         }
-        if (heal(rc, allies)) {
+        boolean guarding = false;
+        if (recoverFlag(rc, allyFlagSpawns)) {
+            heal(rc, allies);  // we can still try healing as we move to the flag
+            rc.setIndicatorString("recovering stolen flag");
+        } else if (heal(rc, allies)) {
             rc.setIndicatorString("healed");
+        } else if (guardFlag(rc, allyFlagSpawns)) {
+            rc.setIndicatorString("guarding flag");
+            guarding = true;
         } else if (enemies.length == 0) {
-            final EnemySighting nearestEnemySighting = nearestSighting(rc.getLocation(), Communications.enemySightings, Communications.nSightings, rc.getRoundNum());
+            final MapLocation nearestEnemySighting = comms.prioritySighting(rc.getLocation());
             if (nearestEnemySighting != null) {
-                final Direction dir = rc.getLocation().directionTo(nearestEnemySighting.location);
+                final Direction dir = rc.getLocation().directionTo(nearestEnemySighting);
                 tryMove(rc, dir);
                 if (rc.isMovementReady() && rc.canFill(rc.getLocation().add(dir))) {
                     rc.fill(rc.getLocation().add(dir));
                 }
-                rc.setIndicatorString("moving to " + nearestEnemySighting.location);
+                rc.setIndicatorString("moving to " + nearestEnemySighting);
             }
         }
 
-        if (enemies.length > 0) {
-            moveSafe(rc, enemyReachCount);
-        } else if (getCrumbs(rc));
-        else spreadOut(rc, allies);
+        if (!guarding) {
+            if (enemies.length > 0) {
+                moveSafe(rc, enemyReachCount);
+            } else if (getCrumbs(rc)) ;
+            else spreadOut(rc, allies);
+        }
+
+//        debugBytecode(rc, "end of play");
     }
 
     // ideally we'd know enemies' movement cooldowns by tracking their moves but that is hard and scary to implement
@@ -297,6 +325,38 @@ public strictfp class RobotPlayer {
         if (bestDir != Direction.CENTER && rc.canMove(bestDir)) {
             rc.move(bestDir);
         }
+    }
+
+    static boolean recoverFlag(RobotController rc, MapLocation[] allyFlagSpawns) throws GameActionException {
+        if (allyFlagSpawns[0] != null && !Communications.allyFlags[0].equals(allyFlagSpawns[0])) {
+            tryMove(rc, rc.getLocation().directionTo(Communications.allyFlags[0]));
+            return true;
+        }
+        if (allyFlagSpawns[1] != null && !Communications.allyFlags[1].equals(allyFlagSpawns[1])) {
+            tryMove(rc, rc.getLocation().directionTo(Communications.allyFlags[1]));
+            return true;
+        }
+        if (allyFlagSpawns[2] != null && !Communications.allyFlags[2].equals(allyFlagSpawns[2])) {
+            tryMove(rc, rc.getLocation().directionTo(Communications.allyFlags[2]));
+            return true;
+        }
+        return false;
+    }
+
+    static boolean guardFlag(RobotController rc, MapLocation[] allyFlagSpawns) throws GameActionException {
+        if (allyFlagSpawns[0] != null && ((rc.canSenseLocation(allyFlagSpawns[0]) && rc.senseRobotAtLocation(allyFlagSpawns[0]) == null) || rc.getLocation().equals(allyFlagSpawns[0]))) {
+            tryMove(rc, rc.getLocation().directionTo(allyFlagSpawns[0]));
+            return true;
+        }
+        if (allyFlagSpawns[1] != null && ((rc.canSenseLocation(allyFlagSpawns[1]) && rc.senseRobotAtLocation(allyFlagSpawns[1]) == null) || rc.getLocation().equals(allyFlagSpawns[1]))) {
+            tryMove(rc, rc.getLocation().directionTo(allyFlagSpawns[1]));
+            return true;
+        }
+        if (allyFlagSpawns[2] != null && ((rc.canSenseLocation(allyFlagSpawns[2]) && rc.senseRobotAtLocation(allyFlagSpawns[2]) == null) || rc.getLocation().equals(allyFlagSpawns[2]))) {
+            tryMove(rc, rc.getLocation().directionTo(allyFlagSpawns[2]));
+            return true;
+        }
+        return false;
     }
 
     static boolean heal(RobotController rc, RobotInfo[] allies) throws GameActionException {

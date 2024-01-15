@@ -47,18 +47,6 @@ public class Util {
         return nearest;
     }
 
-    static EnemySighting nearestSighting(MapLocation loc, EnemySighting[] sightings, int nSightings, int round) {
-        int dist = 1_000_000;
-        EnemySighting nearest = null;
-        for (int i = nSightings; i --> 0; ) {
-            if (dist > loc.distanceSquaredTo(sightings[i].location) && !sightings[i].stale(round)) {
-                dist = loc.distanceSquaredTo(sightings[i].location);
-                nearest = sightings[i];
-            }
-        }
-        return nearest;
-    }
-
     // returns highest index in case of tie, which is ideal for enemyReachCount since the highest index is CENTER
     static int minIndex(int[] arr) {
         int idx = -1;
@@ -116,6 +104,6 @@ public class Util {
     }
 
     static void debugBytecode(RobotController rc, String s) {
-        if (rc.getID() == 10459) System.out.println(s + " " + Clock.getBytecodeNum());
+//        if (rc.getID() == 10459) System.out.println(s + " " + Clock.getBytecodeNum());
     }
 }
