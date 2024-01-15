@@ -72,9 +72,11 @@ public class Communications {
     static int[] tbEnemyFlag = new int[ENEMY_FLAG_SPACES];
     static int nEnemyFlag = 0;
 
-    static MapLocation[] tbMapLocation = new MapLocation[1000];  // TODO: find max # of broadcasts
-    static int[] tbMapValue = new int[1000];
+    static MapLocation[] tbMapLocation = new MapLocation[500];  // TODO: find max # of broadcasts
+    static int[] tbMapValue = new int[500];
     static int nMap = 0;
+    static MapLocation[] dams = new MapLocation[3600];
+    static int nDams = 0;
 
     static MapLocation[] tbEnemyLocation = new MapLocation[100];
     static int nEnemyLocation = 0;
@@ -97,9 +99,10 @@ public class Communications {
                 switch (type) {
                     case MAP_INFO:
                         final int info = (value / GameConstants.MAP_MAX_HEIGHT) / GameConstants.MAP_MAX_HEIGHT;
-                        final int wallX = (value / GameConstants.MAP_MAX_HEIGHT) % GameConstants.MAP_MAX_WIDTH;
-                        final int wallY = value % GameConstants.MAP_MAX_HEIGHT;
-                        map[wallY][wallX] = info;
+                        final int tileX = (value / GameConstants.MAP_MAX_HEIGHT) % GameConstants.MAP_MAX_WIDTH;
+                        final int tileY = value % GameConstants.MAP_MAX_HEIGHT;
+                        map[tileX][tileY] = info;
+                        if (info == DAM_TILE) dams[nDams++] = new MapLocation(tileX, tileY);
                         break;
                     case ENEMY:
                         final int enemyX = (value / GameConstants.MAP_MAX_HEIGHT) % GameConstants.MAP_MAX_WIDTH;
