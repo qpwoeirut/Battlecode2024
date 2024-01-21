@@ -104,6 +104,9 @@ public class Util {
     }
 
     static void debugBytecode(RobotController rc, String s) {
-//        if (rc.getID() == 10459) System.out.println(s + " " + Clock.getBytecodeNum());
+        if (rc.getID() == 10459) System.out.println(s + " " + Clock.getBytecodeNum());
+    }
+    static void debug(RobotController rc, String s) {
+        if (rc.getID() == 11975) System.out.println(s + " " + Clock.getBytecodeNum());
     }
 }
