@@ -45,9 +45,10 @@ public strictfp class RobotPlayer {
 
 //                debugBytecode(rc, "after readBroadcasts");
 
-                if (rc.getRoundNum() <= 202) {  // save flag locations during setup
-                    allyFlagSpawns = new MapLocation[]{Communications.allyFlags[0], Communications.allyFlags[1], Communications.allyFlags[2]};
-                }
+                if (rc.getRoundNum() <= 205 || allyFlagSpawns[0] == null) allyFlagSpawns[0] = Communications.allyFlags[0];
+                if (rc.getRoundNum() <= 205 || allyFlagSpawns[1] == null) allyFlagSpawns[1] = Communications.allyFlags[1];
+                if (rc.getRoundNum() <= 205 || allyFlagSpawns[2] == null) allyFlagSpawns[2] = Communications.allyFlags[2];
+
 //                if (rc.getRoundNum() < MOVE_FLAGS) {
 //                    spawnZoneCenters = new MapLocation[]{Communications.allyFlags[0], Communications.allyFlags[1], Communications.allyFlags[2]};
 //                }
@@ -157,21 +158,28 @@ public strictfp class RobotPlayer {
 
 //        debugBytecode(rc, "after enemyReachCount");
 
+        // *Always* have one duck guarding the flag. Prioritize moves to guard/recover a flag.
+        final boolean guarding = guardFlag(rc, allyFlagSpawns);
+        final boolean recovering = !guarding && recoverFlag(rc, allyFlagSpawns);
+        if ((guarding || recovering) && rc.canMove(Direction.CENTER)) { // Stop ducks from moving.
+            rc.move(Direction.CENTER);
+        }
+
         final RobotInfo[] allies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam());
         if (enemies.length > 0) {
             fight(rc, enemies, allies, enemyReachCount);
 //            debugBytecode(rc, "after fight");
         }
-        boolean guarding = false;
-        if (recoverFlag(rc, allyFlagSpawns)) {
+        if (recovering) {
             heal(rc, allies);  // we can still try healing as we move to the flag
             rc.setIndicatorString("recovering stolen flag");
         } else if (heal(rc, allies)) {
             rc.setIndicatorString("healed");
-        } else if (guardFlag(rc, allyFlagSpawns)) {
+        } else if (guarding) {
             rc.setIndicatorString("guarding flag");
-            guarding = true;
-        } else if (enemies.length == 0) {
+        }
+
+        if (enemies.length == 0) {
             final MapLocation nearestEnemySighting = comms.prioritySighting(rc.getLocation());
             if (nearestEnemySighting != null) {
                 final Direction dir = rc.getLocation().directionTo(nearestEnemySighting);
@@ -365,34 +373,64 @@ public strictfp class RobotPlayer {
     }
 
     static boolean recoverFlag(RobotController rc, MapLocation[] allyFlagSpawns) throws GameActionException {
-        if (allyFlagSpawns[0] != null && !Communications.allyFlags[0].equals(allyFlagSpawns[0])) {
-            tryMove(rc, rc.getLocation().directionTo(Communications.allyFlags[0]));
-            return true;
+        MapLocation toRecover = null;
+        if (Communications.allyFlags[0] != null && allyFlagSpawns[0] != null && !Communications.allyFlags[0].equals(allyFlagSpawns[0])) {
+            toRecover = Communications.allyFlags[0];
         }
-        if (allyFlagSpawns[1] != null && !Communications.allyFlags[1].equals(allyFlagSpawns[1])) {
-            tryMove(rc, rc.getLocation().directionTo(Communications.allyFlags[1]));
-            return true;
+        if (Communications.allyFlags[1] != null && allyFlagSpawns[1] != null && !Communications.allyFlags[1].equals(allyFlagSpawns[1])) {
+            if (toRecover == null || rc.getLocation().isWithinDistanceSquared(Communications.allyFlags[1], rc.getLocation().distanceSquaredTo(toRecover))) {
+                toRecover = Communications.allyFlags[1];
+            }
         }
-        if (allyFlagSpawns[2] != null && !Communications.allyFlags[2].equals(allyFlagSpawns[2])) {
-            tryMove(rc, rc.getLocation().directionTo(Communications.allyFlags[2]));
+        if (Communications.allyFlags[2] != null && allyFlagSpawns[2] != null && !Communications.allyFlags[2].equals(allyFlagSpawns[2])) {
+            if (toRecover == null || rc.getLocation().isWithinDistanceSquared(Communications.allyFlags[2], rc.getLocation().distanceSquaredTo(toRecover))) {
+                toRecover = Communications.allyFlags[2];
+            }
+        }
+
+        if (toRecover != null) {
+            // If we're already on/next to flag, don't move. This blocks enemies from moving to flag and picking it up.
+            if (rc.canMove(Direction.NORTH) && rc.getLocation().add(Direction.NORTH).isAdjacentTo(toRecover)) rc.move(Direction.NORTH);
+            if (rc.canMove(Direction.NORTHEAST) && rc.getLocation().add(Direction.NORTHEAST).isAdjacentTo(toRecover)) rc.move(Direction.NORTHEAST);
+            if (rc.canMove(Direction.EAST) && rc.getLocation().add(Direction.EAST).isAdjacentTo(toRecover)) rc.move(Direction.EAST);
+            if (rc.canMove(Direction.SOUTHEAST) && rc.getLocation().add(Direction.SOUTHEAST).isAdjacentTo(toRecover)) rc.move(Direction.SOUTHEAST);
+            if (rc.canMove(Direction.SOUTH) && rc.getLocation().add(Direction.SOUTH).isAdjacentTo(toRecover)) rc.move(Direction.SOUTH);
+            if (rc.canMove(Direction.SOUTHWEST) && rc.getLocation().add(Direction.SOUTHWEST).isAdjacentTo(toRecover)) rc.move(Direction.SOUTHWEST);
+            if (rc.canMove(Direction.WEST) && rc.getLocation().add(Direction.WEST).isAdjacentTo(toRecover)) rc.move(Direction.WEST);
+            if (rc.canMove(Direction.NORTHWEST) && rc.getLocation().add(Direction.NORTHWEST).isAdjacentTo(toRecover)) rc.move(Direction.NORTHWEST);
+            if (!rc.getLocation().isWithinDistanceSquared(toRecover, 2)) tryMove(rc, rc.getLocation().directionTo(toRecover));
             return true;
         }
         return false;
     }
 
     static boolean guardFlag(RobotController rc, MapLocation[] allyFlagSpawns) throws GameActionException {
-        if (allyFlagSpawns[0] != null && ((rc.canSenseLocation(allyFlagSpawns[0]) && rc.senseRobotAtLocation(allyFlagSpawns[0]) == null) || rc.getLocation().equals(allyFlagSpawns[0]))) {
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[0].add(Direction.NORTHEAST))) rc.build(TrapType.STUN, allyFlagSpawns[0].add(Direction.NORTHEAST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[0].add(Direction.SOUTHEAST))) rc.build(TrapType.STUN, allyFlagSpawns[0].add(Direction.SOUTHEAST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[0].add(Direction.SOUTHWEST))) rc.build(TrapType.STUN, allyFlagSpawns[0].add(Direction.SOUTHWEST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[0].add(Direction.NORTHWEST))) rc.build(TrapType.STUN, allyFlagSpawns[0].add(Direction.NORTHWEST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[1].add(Direction.NORTHEAST))) rc.build(TrapType.STUN, allyFlagSpawns[1].add(Direction.NORTHEAST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[1].add(Direction.SOUTHEAST))) rc.build(TrapType.STUN, allyFlagSpawns[1].add(Direction.SOUTHEAST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[1].add(Direction.SOUTHWEST))) rc.build(TrapType.STUN, allyFlagSpawns[1].add(Direction.SOUTHWEST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[1].add(Direction.NORTHWEST))) rc.build(TrapType.STUN, allyFlagSpawns[1].add(Direction.NORTHWEST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[2].add(Direction.NORTHEAST))) rc.build(TrapType.STUN, allyFlagSpawns[2].add(Direction.NORTHEAST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[2].add(Direction.SOUTHEAST))) rc.build(TrapType.STUN, allyFlagSpawns[2].add(Direction.SOUTHEAST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[2].add(Direction.SOUTHWEST))) rc.build(TrapType.STUN, allyFlagSpawns[2].add(Direction.SOUTHWEST));
+        if (rc.canBuild(TrapType.STUN, allyFlagSpawns[2].add(Direction.NORTHWEST))) rc.build(TrapType.STUN, allyFlagSpawns[2].add(Direction.NORTHWEST));
+
+        if (Communications.allyFlags[0] != null && allyFlagSpawns[0] != null && Communications.allyFlags[0].equals(allyFlagSpawns[0]) && ((rc.canSenseLocation(allyFlagSpawns[0]) && rc.senseRobotAtLocation(allyFlagSpawns[0]) == null) || rc.getLocation().equals(allyFlagSpawns[0]))) {
             tryMove(rc, rc.getLocation().directionTo(allyFlagSpawns[0]));
             return true;
         }
-        if (allyFlagSpawns[1] != null && ((rc.canSenseLocation(allyFlagSpawns[1]) && rc.senseRobotAtLocation(allyFlagSpawns[1]) == null) || rc.getLocation().equals(allyFlagSpawns[1]))) {
+        if (Communications.allyFlags[1] != null && allyFlagSpawns[1] != null && Communications.allyFlags[1].equals(allyFlagSpawns[1]) && ((rc.canSenseLocation(allyFlagSpawns[1]) && rc.senseRobotAtLocation(allyFlagSpawns[1]) == null) || rc.getLocation().equals(allyFlagSpawns[1]))) {
             tryMove(rc, rc.getLocation().directionTo(allyFlagSpawns[1]));
             return true;
         }
-        if (allyFlagSpawns[2] != null && ((rc.canSenseLocation(allyFlagSpawns[2]) && rc.senseRobotAtLocation(allyFlagSpawns[2]) == null) || rc.getLocation().equals(allyFlagSpawns[2]))) {
+        if (Communications.allyFlags[2] != null && allyFlagSpawns[2] != null && Communications.allyFlags[2].equals(allyFlagSpawns[2]) && ((rc.canSenseLocation(allyFlagSpawns[2]) && rc.senseRobotAtLocation(allyFlagSpawns[2]) == null) || rc.getLocation().equals(allyFlagSpawns[2]))) {
             tryMove(rc, rc.getLocation().directionTo(allyFlagSpawns[2]));
             return true;
         }
+
         return false;
     }
 
