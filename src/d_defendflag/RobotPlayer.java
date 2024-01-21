@@ -10,6 +10,8 @@ public strictfp class RobotPlayer {
     static Random rng;
     static Communications comms;
 
+    static int idleTurns = 0;
+
 //    final static int MOVE_FLAGS = 10;
 
     @SuppressWarnings("unused")
@@ -168,9 +170,6 @@ public strictfp class RobotPlayer {
         // *Always* have one duck guarding the flag. Prioritize moves to guard/recover a flag.
         final boolean guarding = guardFlag(rc, allyFlagSpawns);
         final boolean recovering = !guarding && recoverFlag(rc, allyFlagSpawns);
-        if ((guarding || recovering) && rc.canMove(Direction.CENTER)) { // Stop ducks from moving.
-            rc.move(Direction.CENTER);
-        }
 
         final RobotInfo[] allies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam());
         if (enemies.length > 0) {
@@ -186,11 +185,11 @@ public strictfp class RobotPlayer {
             rc.setIndicatorString("guarding flag");
         }
 
-        if (enemies.length == 0) {
+        if (enemies.length == 0 && !guarding && !recovering) {
             final MapLocation nearestEnemySighting = comms.prioritySighting(rc.getLocation());
             if (nearestEnemySighting != null) {
                 final Direction dir = rc.getLocation().directionTo(nearestEnemySighting);
-                tryMove(rc, dir);
+                tryMoveWithFill(rc, dir);
                 if (rc.isMovementReady() && rc.canFill(rc.getLocation().add(dir))) {
                     rc.fill(rc.getLocation().add(dir));
                 }
@@ -201,9 +200,19 @@ public strictfp class RobotPlayer {
         if (!guarding) {
             if (enemies.length > 0) {
                 moveSafe(rc, enemyReachCount);
-            } else if (getCrumbs(rc)) ;
-            else spreadOut(rc, allies);
+                rc.setIndicatorString("made safe move");
+            } else if (getCrumbs(rc)) {
+                rc.setIndicatorString("getting crumbs");
+            } else {
+                spreadOut(rc, allies);
+                rc.setIndicatorString("spreading out");
+            }
         }
+
+        if (rc.isActionReady() && !guarding && !recovering) {
+            if (++idleTurns >= 4) fill(rc);
+            rc.setIndicatorString("idle for " + idleTurns);
+        } else idleTurns = 0;
 
 //        debugBytecode(rc, "end of play");
     }
@@ -505,9 +514,7 @@ public strictfp class RobotPlayer {
                 }
             }
 
-            tryMove(rc, rc.getLocation().directionTo(closestCrumb));
-            tryFill(rc, rc.getLocation().directionTo(closestCrumb));
-            tryMove(rc, rc.getLocation().directionTo(closestCrumb));
+            tryMoveWithFill(rc, rc.getLocation().directionTo(closestCrumb));
         }
         return false;
     }
@@ -525,6 +532,6 @@ public strictfp class RobotPlayer {
         final int dx = rng.nextInt(101) - 50 + weightX;
         final int dy = rng.nextInt(101) - 50 + weightY;
         final Direction dir = new MapLocation(0, 0).directionTo(new MapLocation(dx, dy));
-        tryMove(rc, dir);
+        tryMoveWithFill(rc, dir);
     }
 }
