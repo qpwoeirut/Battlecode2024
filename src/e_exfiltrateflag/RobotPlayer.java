@@ -30,7 +30,6 @@ public strictfp class RobotPlayer {
         }
 
         MapLocation[] allyFlagSpawns = new MapLocation[GameConstants.NUMBER_FLAGS];
-//        MapLocation[] spawnZoneCenters = new MapLocation[GameConstants.NUMBER_FLAGS];
 
         while (true) {
             try {
@@ -54,30 +53,12 @@ public strictfp class RobotPlayer {
                 if (rc.getRoundNum() <= 205 || allyFlagSpawns[1] == null) allyFlagSpawns[1] = Communications.allyFlags[1];
                 if (rc.getRoundNum() <= 205 || allyFlagSpawns[2] == null) allyFlagSpawns[2] = Communications.allyFlags[2];
 
-//                if (rc.getRoundNum() < MOVE_FLAGS) {
-//                    spawnZoneCenters = new MapLocation[]{Communications.allyFlags[0], Communications.allyFlags[1], Communications.allyFlags[2]};
-//                }
-
                 if (rc.isSpawned()) {
                     final MapInfo[] mapInfos = rc.senseNearbyMapInfos();
                     comms.addMapInfo(mapInfos);
 
                     final FlagInfo[] flags = rc.senseNearbyFlags(GameConstants.VISION_RADIUS_SQUARED);
                     comms.addFlags(flags);
-
-                    // recover in case moving the flags didn't work and the positions got reset
-                    // if a flag gets stolen and dropped in exactly the spawn zone we'll have issues but hopefully that doesn't happen
-//                    for (int i = flags.length; i --> 0;) {
-//                        if (flags[i].getID() == Communications.allyFlagId[0] && !flags[i].isPickedUp() && flags[i].getLocation().equals(spawnZoneCenters[0])) {
-//                            allyFlagSpawns[0] = spawnZoneCenters[0];
-//                        } else if (flags[i].getID() == Communications.allyFlagId[1] && !flags[i].isPickedUp() && flags[i].getLocation().equals(spawnZoneCenters[1])) {
-//                            allyFlagSpawns[1] = spawnZoneCenters[1];
-//                        } else if (flags[i].getID() == Communications.allyFlagId[2] && !flags[i].isPickedUp() && flags[i].getLocation().equals(spawnZoneCenters[2])) {
-//                            allyFlagSpawns[2] = spawnZoneCenters[2];
-//                        }
-//                    }
-//                    System.out.println(Arrays.toString(allyFlagSpawns));
-//                    System.out.println(Arrays.toString(spawnZoneCenters));
 
                     final RobotInfo[] enemies = rc.senseNearbyRobots(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam().opponent());
                     comms.addEnemies(enemies);
