@@ -35,6 +35,14 @@ public class Util {
         else if (rc.canFill(rc.getLocation().add(dir.rotateRight().rotateRight()))) rc.fill(rc.getLocation().add(dir.rotateRight().rotateRight()));
     }
 
+    static void tryMoveWithFill(RobotController rc, Direction dir) throws GameActionException {
+        tryMove(rc, dir);
+        if (rc.isMovementReady() && rc.isActionReady()) {
+            tryFill(rc, dir);
+            tryMove(rc, dir);
+        }
+    }
+
     static RobotInfo nearestRobot(MapLocation loc, RobotInfo[] robots) {
         int dist = 1_000_000;
         RobotInfo nearest = null;
