@@ -68,6 +68,18 @@ public class Util {
         return idx;
     }
 
+    static MapLocation nearestLocation(MapLocation loc, MapLocation[] locations) {
+        int dist = 1_000_000;
+        MapLocation nearest = null;
+        for (int i = locations.length;  i --> 0;) {
+            if (dist > loc.distanceSquaredTo(locations[i])) {
+                dist = loc.distanceSquaredTo(locations[i]);
+                nearest = locations[i];
+            }
+        }
+        return nearest;
+    }
+
     static boolean locationInArray(MapLocation needle, MapLocation[] haystack) {
         for (int i = haystack.length; i --> 0; ) {
             if (needle.equals(haystack[i])) return true;
@@ -100,9 +112,9 @@ public class Util {
     }
 
     static void debugBytecode(RobotController rc, String s) {
-        if (rc.getID() == 10459) System.out.println(s + " " + Clock.getBytecodeNum());
+        if (rc.getID() == 10469) System.out.println(s + " " + Clock.getBytecodeNum());
     }
     static void debug(RobotController rc, String s) {
-        if (rc.getID() == 11975) System.out.println(s + " " + Clock.getBytecodeNum());
+        if (rc.getID() == 10469) System.out.println(s);
     }
 }
