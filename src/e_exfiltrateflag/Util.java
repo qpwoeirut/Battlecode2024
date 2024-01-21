@@ -99,18 +99,6 @@ public class Util {
                 (!rc.canSenseLocation(toMove) || rc.sensePassability(toMove));  // assume passable if unknown
     }
 
-    static float attackDmg(int level) {
-        switch (level) {
-            case 1: return 150 * 1.05f;
-            case 2: return 150 * 1.10f;
-            case 3: return 150 * 1.15f;
-            case 4: return 150 * 1.20f;
-            case 5: return 150 * 1.30f;
-            case 6: return 150 * 1.50f;
-            default: return 150;
-        }
-    }
-
     static void debugBytecode(RobotController rc, String s) {
         if (rc.getID() == 10459) System.out.println(s + " " + Clock.getBytecodeNum());
     }

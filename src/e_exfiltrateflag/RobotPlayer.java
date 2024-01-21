@@ -271,9 +271,8 @@ public strictfp class RobotPlayer {
         Direction bestDir = null;
         int bestScore = -1;
 
-        final float damage = attackDmg(rc.getLevel(SkillType.ATTACK));
         for (int i = enemiesInRange.length; i --> 0; ) {
-            if (enemiesInRange[i].health <= damage) {
+            if (enemiesInRange[i].health <= rc.getAttackDamage()) {
                 for (int d = 9; d --> 0; ) {
                     final Direction dir = Direction.values()[d];
                     if (rc.canMove(dir) && rc.getLocation().add(dir).isWithinDistanceSquared(enemiesInRange[i].location, GameConstants.ATTACK_RADIUS_SQUARED)) {
