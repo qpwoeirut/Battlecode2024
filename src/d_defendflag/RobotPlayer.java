@@ -36,10 +36,12 @@ public strictfp class RobotPlayer {
                     rc.buyGlobal(GlobalUpgrade.ACTION);
                 } else if (rc.canBuyGlobal(GlobalUpgrade.HEALING)) {
                     rc.buyGlobal(GlobalUpgrade.HEALING);
+                } else if (rc.canBuyGlobal(GlobalUpgrade.CAPTURING)) {
+                    rc.buyGlobal(GlobalUpgrade.CAPTURING);
                 }
 
                 if (!rc.isSpawned()) {
-                    spawn(rc, spawnLocs);
+                    spawn(rc, spawnLocs, allyFlagSpawns);
                 }
                 comms.readBroadcasts();
 
@@ -102,21 +104,26 @@ public strictfp class RobotPlayer {
         }
     }
 
-    static void spawn(RobotController rc, MapLocation[] spawnLocs) throws GameActionException {
+    static void spawn(RobotController rc, MapLocation[] spawnLocs, MapLocation[] allyFlagSpawns) throws GameActionException {
+        int bestScore = -1;
+        int bestIdx = -1;
         for (int i = spawnLocs.length; i --> 0; ) {
-            if (rc.canSpawn(spawnLocs[i])) {
-                rc.spawn(spawnLocs[i]);
-                for (int d = 8; d --> 0; ) {
-                    if (!locationInArray(rc.getLocation().add(Direction.values()[d]), spawnLocs)) {
-                        if (rc.canMove(Direction.values()[d])) {
-                            rc.move(Direction.values()[d]);
-                            return;
-                        }
-                    }
-                }
-                return;
+            int score = 0;
+            if (Communications.allyFlags[0] != null && allyFlagSpawns[0] != null && !Communications.allyFlags[0].equals(allyFlagSpawns[0])) {
+                score = Math.max(score, 10000 - spawnLocs[i].distanceSquaredTo(Communications.allyFlags[0]));
+            }
+            if (Communications.allyFlags[1] != null && allyFlagSpawns[1] != null && !Communications.allyFlags[1].equals(allyFlagSpawns[1])) {
+                score = Math.max(score, 10000 - spawnLocs[i].distanceSquaredTo(Communications.allyFlags[1]));
+            }
+            if (Communications.allyFlags[2] != null && allyFlagSpawns[2] != null && !Communications.allyFlags[2].equals(allyFlagSpawns[2])) {
+                score = Math.max(score, 10000 - spawnLocs[i].distanceSquaredTo(Communications.allyFlags[2]));
+            }
+            if (rc.canSpawn(spawnLocs[i]) && bestScore < score) {
+                bestScore = score;
+                bestIdx = i;
             }
         }
+        if (bestIdx != -1) rc.spawn(spawnLocs[bestIdx]);
     }
 
     static void setup(RobotController rc) throws GameActionException {
