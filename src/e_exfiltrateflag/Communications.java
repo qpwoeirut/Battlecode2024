@@ -4,6 +4,8 @@ import battlecode.common.*;
 
 import java.util.Arrays;
 
+import static e_exfiltrateflag.Util.debug;
+
 /**
  * Since all bots are "alive" (in the sense that they're running code) all the time, we can use a broadcast-based system.
  * Whenever a bot needs to communicate something, we put it into the shared array. Then we can free up that spot on the
@@ -298,6 +300,10 @@ public class Communications {
                         enemySightings[j].mergeIn(info[i].location, rc.getRoundNum());
                         tbEnemyLocation[nEnemyLocation++] = info[i].location;
                     }
+                    break;
+                } else if (enemySightings[j].stale(rc.getRoundNum())) {
+                    handled = true;
+                    enemySightings[j] = new EnemySighting(info[i].location, rc.getRoundNum());
                     break;
                 }
             }
