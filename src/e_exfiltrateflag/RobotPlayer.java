@@ -35,8 +35,8 @@ public strictfp class RobotPlayer {
         while (true) {
             try {
 //                int rnd = rc.getRoundNum();
-                if (rc.canBuyGlobal(GlobalUpgrade.ACTION)) {
-                    rc.buyGlobal(GlobalUpgrade.ACTION);
+                if (rc.canBuyGlobal(GlobalUpgrade.ATTACK)) {
+                    rc.buyGlobal(GlobalUpgrade.ATTACK);
                 } else if (rc.canBuyGlobal(GlobalUpgrade.HEALING)) {
                     rc.buyGlobal(GlobalUpgrade.HEALING);
                 } else if (rc.canBuyGlobal(GlobalUpgrade.CAPTURING)) {
