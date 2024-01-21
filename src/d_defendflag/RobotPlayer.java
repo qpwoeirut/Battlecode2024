@@ -11,6 +11,7 @@ public strictfp class RobotPlayer {
     static Communications comms;
 
     static int idleTurns = 0;
+    static int maxIdleTurns = 0;
 
 //    final static int MOVE_FLAGS = 10;
 
@@ -210,7 +211,11 @@ public strictfp class RobotPlayer {
         }
 
         if (rc.isActionReady() && !guarding && !recovering) {
-            if (++idleTurns >= 4) fill(rc);
+            maxIdleTurns = Math.max(maxIdleTurns, ++idleTurns);
+            if (idleTurns >= 10) {
+                fill(rc);
+                if (maxIdleTurns >= 500 && rc.getLevel(SkillType.BUILD) < 6) dig(rc);  // Level up skills if we never do anything
+            }
             rc.setIndicatorString("idle for " + idleTurns);
         } else idleTurns = 0;
 
