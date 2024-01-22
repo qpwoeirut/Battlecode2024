@@ -141,6 +141,16 @@ public strictfp class RobotPlayer {
     }
 
     static void play(RobotController rc, RobotInfo[] enemies, MapLocation[] allyFlagSpawns) throws GameActionException {
+        FlagInfo[] flags = rc.senseNearbyFlags(GameConstants.VISION_RADIUS_SQUARED, rc.getTeam().opponent());
+        for (int i = flags.length; i --> 0; ) {
+            if (rc.canPickupFlag(flags[i].getLocation())) {
+                rc.pickupFlag(flags[i].getLocation());
+                break;
+            }
+        }
+        if (rc.hasFlag()) {
+            tryMove(rc, rc.getLocation().directionTo(nearestLocation(rc.getLocation(), rc.getAllySpawnLocations())));
+        }
         final int[] enemyReachCount = {  // order matches Direction.values()
                 rc.canMove(Direction.NORTH) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.NORTH)) : 1_000_000,
                 rc.canMove(Direction.NORTHEAST) ? countEnemiesCanReach(rc, rc.getLocation().add(Direction.NORTHEAST)) : 1_000_000,
