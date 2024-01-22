@@ -90,22 +90,27 @@ public strictfp class RobotPlayer {
     }
 
     static void spawn(RobotController rc, MapLocation[] spawnLocs, MapLocation[] allyFlagSpawns) throws GameActionException {
-        int bestScore = -1;
+        final boolean stolen0 = Communications.allyFlags[0] != null && !Communications.allyFlags[0].equals(allyFlagSpawns[0]);
+        final boolean stolen1 = Communications.allyFlags[1] != null && !Communications.allyFlags[1].equals(allyFlagSpawns[1]);
+        final boolean stolen2 = Communications.allyFlags[2] != null && !Communications.allyFlags[2].equals(allyFlagSpawns[2]);
+        int minDist = 1_000_000;
         int bestIdx = -1;
         for (int i = spawnLocs.length; i --> 0; ) {
-            int score = 0;
-            if (Communications.allyFlags[0] != null && allyFlagSpawns[0] != null && !Communications.allyFlags[0].equals(allyFlagSpawns[0])) {
-                score = Math.max(score, 10000 - spawnLocs[i].distanceSquaredTo(Communications.allyFlags[0]));
-            }
-            if (Communications.allyFlags[1] != null && allyFlagSpawns[1] != null && !Communications.allyFlags[1].equals(allyFlagSpawns[1])) {
-                score = Math.max(score, 10000 - spawnLocs[i].distanceSquaredTo(Communications.allyFlags[1]));
-            }
-            if (Communications.allyFlags[2] != null && allyFlagSpawns[2] != null && !Communications.allyFlags[2].equals(allyFlagSpawns[2])) {
-                score = Math.max(score, 10000 - spawnLocs[i].distanceSquaredTo(Communications.allyFlags[2]));
-            }
-            if (rc.canSpawn(spawnLocs[i]) && bestScore < score) {
-                bestScore = score;
-                bestIdx = i;
+            if (rc.canSpawn(spawnLocs[i])) {
+                if (stolen0 && spawnLocs[i].isWithinDistanceSquared(Communications.allyFlags[0], minDist)) {
+                    // Subtract 1 so that isWithinDistanceSquared is a strictly less than comparison
+                    minDist = spawnLocs[i].distanceSquaredTo(Communications.allyFlags[0]) - 1;
+                    bestIdx = i;
+                }
+                if (stolen1 && spawnLocs[i].isWithinDistanceSquared(Communications.allyFlags[1], minDist)) {
+                    minDist = spawnLocs[i].distanceSquaredTo(Communications.allyFlags[1]) - 1;
+                    bestIdx = i;
+                }
+                if (stolen2 && spawnLocs[i].isWithinDistanceSquared(Communications.allyFlags[2], minDist)) {
+                    minDist = spawnLocs[i].distanceSquaredTo(Communications.allyFlags[2]) - 1;
+                    bestIdx = i;
+                }
+                if (bestIdx == -1) bestIdx = i;
             }
         }
         if (bestIdx != -1) rc.spawn(spawnLocs[bestIdx]);
