@@ -42,9 +42,6 @@ public strictfp class RobotPlayer {
                     rc.buyGlobal(GlobalUpgrade.CAPTURING);
                 }
 
-                if (!rc.isSpawned()) {
-                    spawn(rc, spawnLocs, allyFlagSpawns);
-                }
                 comms.readBroadcasts();
 
 //                debugBytecode(rc, "after readBroadcasts");
@@ -52,6 +49,10 @@ public strictfp class RobotPlayer {
                 if (rc.getRoundNum() <= 205 || allyFlagSpawns[0] == null) allyFlagSpawns[0] = Communications.allyFlags[0];
                 if (rc.getRoundNum() <= 205 || allyFlagSpawns[1] == null) allyFlagSpawns[1] = Communications.allyFlags[1];
                 if (rc.getRoundNum() <= 205 || allyFlagSpawns[2] == null) allyFlagSpawns[2] = Communications.allyFlags[2];
+
+                if (!rc.isSpawned()) {
+                    spawn(rc, spawnLocs, allyFlagSpawns);
+                }
 
                 if (rc.isSpawned()) {
                     final MapInfo[] mapInfos = rc.senseNearbyMapInfos();
