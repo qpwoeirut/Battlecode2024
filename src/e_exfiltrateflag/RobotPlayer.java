@@ -301,17 +301,17 @@ public strictfp class RobotPlayer {
     static boolean runAway(RobotController rc, RobotInfo[] enemies, RobotInfo nearestEnemy, int[] enemyReachCount, int allyHealth, int enemyHealth) throws GameActionException {
         if (rc.getHealth() < GameConstants.DEFAULT_HEALTH && (rc.getHealth() <= 450 || allyHealth < enemyHealth)) {
             if (enemies.length * rc.getCrumbs() >= 4000) {
-                if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation().add(rc.getLocation().directionTo(nearestEnemy.location)))) {
-                    // TODO: track where traps are, and assume they go off when they disappear, then switch to stun
-                    rc.build(TrapType.EXPLOSIVE, rc.getLocation().add(rc.getLocation().directionTo(nearestEnemy.location)));
-                } else if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation())) {
-                    rc.build(TrapType.EXPLOSIVE, rc.getLocation());
+                if (rc.canBuild(TrapType.STUN, rc.getLocation().add(rc.getLocation().directionTo(nearestEnemy.location)))) {
+                    // TODO: track where traps are and assume they go off when they disappear
+                    rc.build(TrapType.STUN, rc.getLocation().add(rc.getLocation().directionTo(nearestEnemy.location)));
+                } else if (rc.canBuild(TrapType.STUN, rc.getLocation())) {
+                    rc.build(TrapType.STUN, rc.getLocation());
                 }
             }
             tryMove(rc, Direction.values()[minIndex(enemyReachCount)]);
             if (enemies.length * rc.getCrumbs() >= 4000) {
-                if (rc.canBuild(TrapType.EXPLOSIVE, rc.getLocation())) {
-                    rc.build(TrapType.EXPLOSIVE, rc.getLocation());
+                if (rc.canBuild(TrapType.STUN, rc.getLocation())) {
+                    rc.build(TrapType.STUN, rc.getLocation());
                 }
             }
             return true;
